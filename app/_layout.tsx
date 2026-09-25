@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { migrateNow } from '@/db';
+import { catchUpMissed, ensureNotificationSetup } from '@/features/reminders/notify';
+import { refreshReminders } from '@/features/reminders/refresh';
 import { useFontsLoaded } from '@/ui/fonts';
 import { GrainOverlay } from '@/ui/GrainOverlay';
 import { colors } from '@/ui/tokens';
@@ -12,7 +14,15 @@ export default function RootLayout() {
   const fontsLoaded = useFontsLoaded();
   const [ready, setReady] = useState(false);
   useEffect(() => {
-    migrateNow().then(() => setReady(true));
+    migrateNow().then(() => {
+      setReady(true);
+      ensureNotificationSetup()
+        .catch(() => {})
+        .then(() => catchUpMissed())
+        .catch(() => {})
+        .then(() => refreshReminders())
+        .catch(() => {});
+    });
   }, []);
   if (!fontsLoaded || !ready) {
     return (

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { Pattern, ScheduleException } from '@/db/schema';
+import { refreshReminders } from '@/features/reminders/refresh';
 import { ExceptionDraft, PatternDraft } from './logic';
 import {
   listExceptions,
@@ -28,6 +29,8 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
   refresh: async () => {
     const [patterns, exceptions] = await Promise.all([listPatterns(), listExceptions()]);
     set({ patterns, exceptions, loaded: true });
+    // Every mutation funnels through refresh, so this one hook covers all of them.
+    void refreshReminders().catch(() => {});
   },
   savePattern: async (patch) => {
     const row = await upsertPattern(patch);

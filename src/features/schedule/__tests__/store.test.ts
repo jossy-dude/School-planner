@@ -10,6 +10,14 @@ jest.mock('../queries', () => ({
   removeException: jest.fn(),
 }));
 
+jest.mock('@/features/reminders/refresh', () => ({
+  refreshReminders: jest.fn().mockResolvedValue(undefined),
+}));
+
+const { refreshReminders } = jest.requireMock('@/features/reminders/refresh') as {
+  refreshReminders: jest.Mock;
+};
+
 const queries = jest.requireMock('../queries') as {
   listPatterns: jest.Mock;
   listExceptions: jest.Mock;
@@ -44,6 +52,7 @@ it('refresh loads patterns and exceptions and marks loaded', async () => {
   expect(s.patterns).toEqual([pattern]);
   expect(s.exceptions).toEqual([exception]);
   expect(s.loaded).toBe(true);
+  expect(refreshReminders).toHaveBeenCalledTimes(1);
 });
 
 it('savePattern upserts, refreshes, and returns the row', async () => {
