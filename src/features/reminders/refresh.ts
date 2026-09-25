@@ -6,7 +6,7 @@ import { DEFAULT_SETTINGS } from '@/features/settings/logic';
 import { readAllSettings } from '@/features/settings/queries';
 import { planReminders } from '@/lib/reminders';
 import { occurrencesInRange } from '@/lib/schedule';
-import { ensureNotificationSetup, rescheduleAll } from './notify';
+import { catchUpMissed, ensureNotificationSetup, rescheduleAll } from './notify';
 
 const HORIZON_DAYS = 14;
 const DAY_MS = 86_400_000;
@@ -21,7 +21,10 @@ export function refreshReminders(): Promise<void> {
 async function runRefresh(): Promise<void> {
   const nowMs = Date.now();
   const rangeEndMs = nowMs + HORIZON_DAYS * DAY_MS;
+  // Single notification-setup site (root boot and store mutations both reach it through this chain),
+  // and catch-up runs inside the same serialized run so it can never race this refresh's cancelAll.
   await ensureNotificationSetup();
+  await catchUpMissed();
   const [patternRows, exceptionRows, courseRows, eventRows, stored] = await Promise.all([
     listPatterns(),
     listExceptions(),

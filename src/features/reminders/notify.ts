@@ -34,13 +34,16 @@ export async function catchUpMissed(): Promise<void> {
   const scheduled = await Notifications.getAllScheduledNotificationsAsync();
   const now = Date.now();
   for (const s of scheduled) {
-    const trigger = s.trigger as { type?: string; date?: number } | null;
-    if (trigger?.type === 'date' && typeof trigger.date === 'number' && trigger.date < now) {
+    const trigger = s.trigger as { type?: string; value?: number; date?: number; seconds?: number } | null;
+    const fireAtMs =
+      trigger?.type === 'date' ? (typeof trigger.value === 'number' ? trigger.value : trigger.date) : undefined;
+    if (typeof fireAtMs === 'number' && fireAtMs < now) {
       await Notifications.scheduleNotificationAsync({
-        content: { title: s.content.title, body: s.content.body, data: s.content.data, sound: s.content.sound ?? undefined },
+        content: { title: s.content.title ?? '', body: s.content.body ?? '', data: (s.content.data as Record<string, unknown>) ?? {} },
         trigger: null,
       });
       await Notifications.cancelScheduledNotificationAsync(s.identifier);
     }
+    // iOS: DATE triggers read back as timeInterval, so the original fire date is unrecoverable — no-op by design.
   }
 }
