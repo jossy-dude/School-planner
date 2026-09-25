@@ -116,9 +116,7 @@ export function DayDetail({
     h.value = withSpring(target.height, SPRING);
     alpha.value = withSpring(1, SPRING);
     backdrop.value = withTiming(BACKDROP_ALPHA, { duration: 200 });
-    // Shared values are stable across renders; only the phase/target change.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [closing, target, start, onClose]);
+  }, [closing, target, start, onClose, x, y, w, h, alpha, backdrop]);
 
   const close = () => setClosing(true);
 
