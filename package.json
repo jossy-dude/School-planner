@@ -6,6 +6,12 @@
     "react-dom": "19.2.3"
   },
   "dependencies": {
+    "@expo-google-fonts/bricolage-grotesque": "^0.4.1",
+    "@expo-google-fonts/dotgothic16": "^0.4.1",
+    "@expo-google-fonts/doto": "^0.4.1",
+    "@expo-google-fonts/orbitron": "^0.4.2",
+    "@expo-google-fonts/share-tech-mono": "^0.4.1",
+    "@expo-google-fonts/vt323": "^0.4.1",
     "@marceloterreiro/flash-calendar": "^2.0.0",
     "@shopify/flash-list": "^2.3.2",
     "@shopify/react-native-skia": "2.6.2",
