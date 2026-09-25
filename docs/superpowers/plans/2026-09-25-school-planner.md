@@ -788,16 +788,27 @@ Add dependency if the type import fails: `npm i -D @types/react-navigation` is N
 import renderer from 'react-test-renderer';
 import { FilterChip, TMinusChip, Stamp } from '../primitives';
 
-const json = (n: React.ReactElement) => JSON.stringify(renderer.create(n).toJSON());
+const textContents = (n: React.ReactElement): string => {
+  const out: string[] = [];
+  const walk = (node: unknown): void => {
+    if (node === null || typeof node !== 'object') return;
+    const n2 = node as { children?: unknown };
+    if (Array.isArray(n2.children)) n2.children.forEach(walk);
+    else if (typeof n2.children === 'string') out.push(n2.children);
+  };
+  walk(renderer.create(n).toJSON());
+  return out.join('|');
+};
 
-it('chip shows count', () => {
-  expect(json(<FilterChip label="CLASSES" count={5} active onPress={() => {}} />)).toContain('5');
+it('chip shows count in its own pill (mutation-guarded)', () => {
+  expect(textContents(<FilterChip label="CLASSES" count={5} active onPress={() => {}} />)).toContain('5');
+  // fails if the count pill block is removed
 });
 it('t-minus uses lcd text', () => {
-  expect(json(<TMinusChip text="T-6D" />)).toContain('T-6D');
+  expect(textContents(<TMinusChip text="T-6D" />)).toContain('T-6D');
 });
 it('stamp renders text', () => {
-  expect(json(<Stamp text="DONE" />)).toContain('DONE');
+  expect(textContents(<Stamp text="DONE" />)).toContain('DONE');
 });
 ```
 
