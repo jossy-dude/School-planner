@@ -1,14 +1,20 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { migrateNow } from '@/db';
 import { useFontsLoaded } from '@/ui/fonts';
 import { GrainOverlay } from '@/ui/GrainOverlay';
 import { colors } from '@/ui/tokens';
 
 export default function RootLayout() {
   const fontsLoaded = useFontsLoaded();
-  if (!fontsLoaded) {
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    migrateNow().then(() => setReady(true));
+  }, []);
+  if (!fontsLoaded || !ready) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', backgroundColor: colors.paper }}>
         <ActivityIndicator color={colors.ink} />
