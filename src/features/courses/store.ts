@@ -30,3 +30,5 @@ export const useCoursesStore = create<CoursesState>((set, get) => ({
     await get().refresh();
   },
 }));
+
+export const useCourses = () => useCoursesStore((s) => s.courses);
