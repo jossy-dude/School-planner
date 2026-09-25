@@ -15,9 +15,10 @@ export function parseDateId(dateId: string): Date {
   return new Date(y!, m! - 1, d!);
 }
 
-function timeOnDay(dateId: string, hhmm: string): number {
+function timeOnDay(dateId: string, hhmm: string, dayOffset = 0): number {
   const [h, m] = hhmm.split(':').map(Number);
-  return parseDateId(dateId).getTime() + (h ?? 0) * 3600_000 + (m ?? 0) * 60_000;
+  const d = parseDateId(dateId);
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate() + dayOffset, h ?? 0, m ?? 0).getTime();
 }
 
 function weekdayOf(dateId: string): number {
@@ -44,7 +45,7 @@ export function occurrencesOnDay(
     if (cancelled.has(p.id)) continue;
     const startMs = timeOnDay(dateId, p.startTime);
     const endMsRaw = timeOnDay(dateId, p.endTime);
-    const endMs = endMsRaw > startMs ? endMsRaw : endMsRaw + 86_400_000;
+    const endMs = endMsRaw > startMs ? endMsRaw : timeOnDay(dateId, p.endTime, 1);
     out.push({ id: `${p.id}:${dateId}`, courseId: p.courseId, dateId, startMs, endMs, patternId: p.id, kind: 'pattern' });
   }
   for (const e of exceptions) {
@@ -52,7 +53,7 @@ export function occurrencesOnDay(
     if (!e.startTime || !e.endTime) continue;
     const startMs = timeOnDay(dateId, e.startTime);
     const endMsRaw = timeOnDay(dateId, e.endTime);
-    const endMs = endMsRaw > startMs ? endMsRaw : endMsRaw + 86_400_000;
+    const endMs = endMsRaw > startMs ? endMsRaw : timeOnDay(dateId, e.endTime, 1);
     out.push({ id: `oneoff:${e.id}`, courseId: e.courseId, dateId, startMs, endMs, patternId: null, kind: 'one_off' });
   }
   return out.sort((a, b) => a.startMs - b.startMs);
@@ -65,7 +66,9 @@ export function occurrencesInRange(
   const cur = new Date(rangeStartMs);
   cur.setHours(0, 0, 0, 0);
   while (cur.getTime() <= rangeEndMs) {
-    out.push(...occurrencesOnDay(patterns, exceptions, toDateId(cur)));
+    for (const occ of occurrencesOnDay(patterns, exceptions, toDateId(cur))) {
+      if (occ.startMs >= rangeStartMs && occ.startMs <= rangeEndMs) out.push(occ);
+    }
     cur.setDate(cur.getDate() + 1);
   }
   return out;

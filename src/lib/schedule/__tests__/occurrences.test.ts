@@ -1,4 +1,4 @@
-import { classifySessionState, occurrencesOnDay, PatternInput, ExceptionInput } from '../index';
+import { classifySessionState, occurrencesOnDay, occurrencesInRange, PatternInput, ExceptionInput } from '../index';
 
 // Helper: build local-time "HH:MM" epoch for 2026-09-28 (Monday, weekday 1)
 const DAY = '2026-09-28';
@@ -54,4 +54,11 @@ it('classifySessionState buckets by now', () => {
   expect(classifySessionState(at(8), occ)).toBe('upcoming');
   expect(classifySessionState(at(9, 30), occ)).toBe('active');
   expect(classifySessionState(at(11), occ)).toBe('ended');
+});
+
+it('occurrencesInRange filters to occurrences starting within [rangeStartMs, rangeEndMs]', () => {
+  expect(occurrencesInRange([p1], [], at(15), at(23))).toHaveLength(0);
+  expect(occurrencesInRange([p1], [], dayStart, at(8, 59))).toHaveLength(0);
+  expect(occurrencesInRange([p1], [], dayStart, at(9))).toHaveLength(1);
+  expect(occurrencesInRange([p1], [], dayStart, at(23))).toHaveLength(1);
 });
