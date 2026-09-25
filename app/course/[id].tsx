@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react';
 import { Alert, ScrollView, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
+import { Pattern } from '@/db/schema';
 import { CourseForm } from '@/features/courses/components/CourseForm';
 import { PatternTile } from '@/features/courses/components/PatternTile';
 import { courseFolderLabel } from '@/features/courses/logic';
 import { useCoursesStore } from '@/features/courses/store';
-import { EmptyState, SquareIconButton } from '@/ui/primitives';
+import { PatternRow } from '@/features/schedule/components/PatternRow';
+import { useSchedule } from '@/features/schedule/store';
+import { EmptyState, SquareIconButton, Stamp } from '@/ui/primitives';
 import { colors, fontFamilies, hardShadow, radius } from '@/ui/tokens';
 
 const SECTIONS = [
@@ -19,8 +22,10 @@ const SECTIONS = [
 export default function CourseScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { courses, loaded, refresh, remove } = useCoursesStore();
+  const { patterns, exceptions, refresh: refreshSchedule, removePattern } = useSchedule(id);
   const [editing, setEditing] = useState(false);
   useEffect(() => { refresh(); }, [refresh]);
+  useEffect(() => { refreshSchedule(); }, [refreshSchedule]);
 
   if (id === 'new') return <CourseForm mode="create" />;
 
@@ -53,6 +58,13 @@ export default function CourseScreen() {
           router.back();
         },
       },
+    ]);
+  };
+
+  const confirmDeletePattern = (p: Pattern) => {
+    Alert.alert('Delete pattern?', `${p.startTime}–${p.endTime} will be removed from the schedule.`, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: () => removePattern(p.id) },
     ]);
   };
 
@@ -89,14 +101,59 @@ export default function CourseScreen() {
         </View>
       </View>
 
-      {SECTIONS.map((s) => (
+      {SECTIONS.map((s) => (s.key === 'schedule' ? (
+        <View key={s.key} style={{ gap: 8 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Text style={{ fontFamily: fontFamilies.heading, fontSize: 13, color: colors.ink70 }}>
+              {s.glyph} {s.title}
+            </Text>
+            <SquareIconButton
+              glyph="+"
+              size={32}
+              onPress={() => router.push({ pathname: '/schedule-edit', params: { courseId: id } })}
+            />
+          </View>
+          {patterns.length === 0 && exceptions.length === 0 ? (
+            <EmptyState glyph={s.glyph} label="nothing here yet" />
+          ) : (
+            <View style={{ gap: 8 }}>
+              {patterns.map((p) => (
+                <PatternRow
+                  key={p.id}
+                  pattern={p}
+                  onPress={() => router.push({ pathname: '/schedule-edit', params: { courseId: id, patternId: p.id } })}
+                  onDelete={() => confirmDeletePattern(p)}
+                />
+              ))}
+              {exceptions.length > 0 && (
+                <View style={{ gap: 6 }}>
+                  <Text style={{ fontFamily: fontFamilies.mono, fontSize: 11, color: colors.ink40, letterSpacing: 1 }}>
+                    EXCEPTIONS
+                  </Text>
+                  {exceptions.map((e) => (
+                    <View key={e.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                      <Text style={{ fontFamily: fontFamilies.mono, fontSize: 13, color: colors.ink70 }}>
+                        {e.date}
+                      </Text>
+                      <Stamp
+                        text={e.kind === 'cancelled' ? 'CANCELLED' : 'EXTRA'}
+                        tone={e.kind === 'cancelled' ? 'danger' : 'ink'}
+                      />
+                    </View>
+                  ))}
+                </View>
+              )}
+            </View>
+          )}
+        </View>
+      ) : (
         <View key={s.key} style={{ gap: 4 }}>
           <Text style={{ fontFamily: fontFamilies.heading, fontSize: 13, color: colors.ink70 }}>
             {s.glyph} {s.title}
           </Text>
           <EmptyState glyph={s.glyph} label="nothing here yet" />
         </View>
-      ))}
+      )))}
     </ScrollView>
   );
 }
