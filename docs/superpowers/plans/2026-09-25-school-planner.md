@@ -1738,9 +1738,19 @@ export function isValidTime(v: string): boolean {
   return h! < 24 && m! < 60;
 }
 export function normalizeTime(v: string): string {
+  if (v.includes(':')) {
+    const [hs = '', ms = ''] = v.split(':');
+    const pad = (s: string) => s.replace(/\D/g, '').slice(0, 2).padStart(2, '0');
+    return `${pad(hs)}:${pad(ms)}`;
+  }
   const digits = v.replace(/\D/g, '').slice(0, 4);
-  if (digits.length < 4) return digits.length > 2 ? `${digits.slice(0, 2)}:${digits.slice(2)}` : digits;
-  return `${digits.slice(0, 2)}:${digits.slice(2)}`;
+  if (digits.length === 0) return '';
+  if (digits.length <= 2) {
+    const h = (digits[0] ?? '0').padStart(2, '0');
+    const m = (digits[1] ?? '0').padStart(2, '0');
+    return `${h}:${m}`;
+  }
+  return `${digits.slice(0, 2)}:${digits.slice(2, 4).padStart(2, '0')}`;
 }
 ```
 Run → PASS.
@@ -1750,7 +1760,7 @@ Run → PASS.
 - [ ] **Step 3: Components**
 
 `WeekdayChips`: 7 Pressables, selected = ink bg + paper letter, unselected = paper + ink15 border.
-`TimeField`: two `<TextInput>` (mono font, numeric `keyboardType="number-pad"`, maxLength 2/2) joined by `:`; onBlur → `normalizeTime`; parent validates with `isValidTime`.
+`TimeField`: two `<TextInput>` (mono font, numeric `keyboardType="number-pad"`, maxLength 2/2) joined by `:`; onBlur → `normalizeTime(\`${hh}:${mm}\`)` on the combined string, then split the result back into the two inputs; parent validates with `isValidTime`.
 
 - [ ] **Step 4: `app/schedule-edit.tsx` modal**
 
