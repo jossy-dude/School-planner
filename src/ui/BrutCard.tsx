@@ -1,6 +1,11 @@
 import { ReactNode } from 'react';
 import { Pressable, StyleProp, ViewStyle } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
+import Animated, {
+  SharedValue,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated';
 import { colors, hardShadow, radius } from '@/ui/tokens';
 
 interface Props {
@@ -9,6 +14,10 @@ interface Props {
   style?: StyleProp<ViewStyle>;
   depth?: number;
 }
+
+const springPress = (press: SharedValue<number>, to: number) => {
+  press.value = withSpring(to, { damping: 30, stiffness: 600 });
+};
 
 export function BrutCard({ children, onPress, style, depth = 3 }: Props) {
   const press = useSharedValue(0);
@@ -38,15 +47,8 @@ export function BrutCard({ children, onPress, style, depth = 3 }: Props) {
   return (
     <Pressable
       onPress={onPress}
-      onPressIn={() => {
-        // react-hooks/immutability false positive: Reanimated shared values are mutable by design
-        // eslint-disable-next-line react-hooks/immutability
-        press.value = withSpring(depth, { damping: 30, stiffness: 600 });
-      }}
-      onPressOut={() => {
-        // eslint-disable-next-line react-hooks/immutability
-        press.value = withSpring(0, { damping: 30, stiffness: 600 });
-      }}
+      onPressIn={() => springPress(press, depth)}
+      onPressOut={() => springPress(press, 0)}
     >
       {body}
     </Pressable>

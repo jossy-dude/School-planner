@@ -18,7 +18,6 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <StatusBar style="dark" />
-      <GrainOverlay />
       <Stack
         screenOptions={{
           headerShown: false,
@@ -32,6 +31,7 @@ export default function RootLayout() {
         <Stack.Screen name="course/[id]" />
         <Stack.Screen name="settings" />
       </Stack>
+      <GrainOverlay />
     </GestureHandlerRootView>
   );
 }
