@@ -3,6 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 import { ActivityIndicator, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useFontsLoaded } from '@/ui/fonts';
+import { GrainOverlay } from '@/ui/GrainOverlay';
 import { colors } from '@/ui/tokens';
 
 export default function RootLayout() {
@@ -17,6 +18,7 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <StatusBar style="dark" />
+      <GrainOverlay />
       <Stack
         screenOptions={{
           headerShown: false,
