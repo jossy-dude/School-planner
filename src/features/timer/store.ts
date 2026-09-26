@@ -74,10 +74,12 @@ export const useTimerStore = create<TimerStore>((set, get) => ({
       set({ finishing: true });
       const now = Date.now();
       const startedAtMs = get().sessionStartMs ?? now - elapsedMs(s, now);
-      const durationMin = Math.round(elapsedMs(s, now) / 60_000);
+      const elapsed = elapsedMs(s, now);
       set({ state: resetState(s), sessionStartMs: null, nowMs: now });
-      if (durationMin >= 1) {
-        await logSession(s.courseId, startedAtMs, durationMin);
+      // Gate on the wall-clock minute BEFORE rounding, so a 45s press
+      // (round → 1) never becomes a phantom 1-minute row.
+      if (elapsed >= 60_000) {
+        await logSession(s.courseId, startedAtMs, Math.max(1, Math.round(elapsed / 60_000)));
         await get().actions.refreshSessions();
       }
       set({ finishing: false });

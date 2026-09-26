@@ -107,6 +107,22 @@ it('manual finish logs rounded elapsed when it is at least a minute', async () =
   expect(store().state.remainingMs).toBe(60 * MIN);
 });
 
+it('manual finish skips presses under a full wall-clock minute', async () => {
+  actions().start('c1', 60 * MIN);
+  actions().tick(T0 + 45_000);
+  await actions().finish();
+  expect(queries.insertSession).not.toHaveBeenCalled();
+  expect(store().state.status).toBe('idle');
+});
+
+it('manual finish rounds 90s up to a 2-minute row', async () => {
+  actions().start('c1', 60 * MIN);
+  actions().tick(T0 + 90_000);
+  await actions().finish();
+  expect(queries.insertSession).toHaveBeenCalledWith('c1', new Date(T0), 2);
+  expect(store().state.status).toBe('idle');
+});
+
 it('manual finish skips rows shorter than a minute', async () => {
   actions().start('c1', 60 * MIN);
   actions().tick(T0 + 20_000);
