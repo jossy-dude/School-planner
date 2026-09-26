@@ -1,4 +1,5 @@
 import { ReactNode, useEffect } from 'react';
+import * as Haptics from 'expo-haptics';
 import { ScrollView, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { ScaleEditor } from '@/features/gpa/components/ScaleEditor';
@@ -37,11 +38,13 @@ function Stepper({ value, step, min, max, onChange }: {
 }) {
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-      <SquareIconButton glyph="–" size={30} onPress={() => onChange(clamp(value - step, min, max))} />
+      <SquareIconButton glyph="–" size={30} label="decrease"
+        onPress={() => { Haptics.selectionAsync().catch(() => {}); onChange(clamp(value - step, min, max)); }} />
       <Text style={{ fontFamily: fontFamilies.lcd, fontSize: 16, color: colors.ink, minWidth: 48, textAlign: 'center' }}>
         {value}
       </Text>
-      <SquareIconButton glyph="+" size={30} onPress={() => onChange(clamp(value + step, min, max))} />
+      <SquareIconButton glyph="+" size={30} label="increase"
+        onPress={() => { Haptics.selectionAsync().catch(() => {}); onChange(clamp(value + step, min, max)); }} />
     </View>
   );
 }

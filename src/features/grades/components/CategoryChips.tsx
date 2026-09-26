@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import * as Haptics from 'expo-haptics';
 import { Pressable, Text, TextInput, View } from 'react-native';
 import { GradeCategory } from '@/db/schema';
 import { SquareIconButton } from '@/ui/primitives';
@@ -31,7 +32,10 @@ export function Chip({ label, active = false, onPress, onLongPress }: {
   if (onPress === undefined && onLongPress === undefined) return <View style={style}>{text}</View>;
   return (
     <Pressable
-      onPress={onPress}
+      onPress={onPress === undefined ? undefined : () => {
+        Haptics.selectionAsync().catch(() => {});
+        onPress();
+      }}
       onLongPress={onLongPress}
       accessibilityRole="button"
       accessibilityState={active ? { selected: true } : undefined}

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import * as Haptics from 'expo-haptics';
 import { Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { useShallow } from 'zustand/react/shallow';
@@ -225,7 +226,7 @@ function PromisesSection() {
               glyph="−"
               size={32}
               label="decrease target minutes"
-              onPress={() => setTargetMin((t) => stepTarget(t, -1))}
+              onPress={() => { Haptics.selectionAsync().catch(() => {}); setTargetMin((t) => stepTarget(t, -1)); }}
             />
             <View style={{
               minWidth: 76, borderWidth: 2, borderColor: colors.ink, borderRadius: radius.sm,
@@ -239,7 +240,7 @@ function PromisesSection() {
               glyph="+"
               size={32}
               label="increase target minutes"
-              onPress={() => setTargetMin((t) => stepTarget(t, 1))}
+              onPress={() => { Haptics.selectionAsync().catch(() => {}); setTargetMin((t) => stepTarget(t, 1)); }}
             />
             <Text style={fieldLabel}>MIN</Text>
           </View>

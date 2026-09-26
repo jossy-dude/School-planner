@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import * as Haptics from 'expo-haptics';
 import { Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { router } from 'expo-router';
 import { Grade } from '@/db/schema';
@@ -166,7 +167,7 @@ export function GradeForm({ grade, courseId }: { grade?: Grade; courseId: string
             glyph="−"
             size={32}
             label="decrease weight override"
-            onPress={() => setWeightOverride((w) => stepWeight(w, -1))}
+            onPress={() => { Haptics.selectionAsync().catch(() => {}); setWeightOverride((w) => stepWeight(w, -1)); }}
           />
           <View style={{
             minWidth: 76, borderWidth: 2, borderColor: colors.ink, borderRadius: radius.sm,
@@ -183,7 +184,7 @@ export function GradeForm({ grade, courseId }: { grade?: Grade; courseId: string
             glyph="+"
             size={32}
             label="increase weight override"
-            onPress={() => setWeightOverride((w) => stepWeight(w, 1))}
+            onPress={() => { Haptics.selectionAsync().catch(() => {}); setWeightOverride((w) => stepWeight(w, 1)); }}
           />
           <Chip
             label="NONE"

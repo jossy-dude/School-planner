@@ -1,11 +1,26 @@
 import renderer from 'react-test-renderer';
-import { FilterChip, TMinusChip, Stamp } from '../primitives';
+import { FilterChip, SegmentedChips, TMinusChip, Stamp } from '../primitives';
 
-const texts = (n: React.ReactElement): string[] => {
+jest.mock('expo-haptics', () => ({
+  selectionAsync: jest.fn(() => Promise.resolve()),
+}));
+
+const Haptics = jest.requireMock('expo-haptics') as { selectionAsync: jest.Mock };
+
+beforeEach(() => {
+  Haptics.selectionAsync.mockClear();
+});
+
+const render = (n: React.ReactElement): renderer.ReactTestRenderer => {
   let tree: renderer.ReactTestRenderer | undefined;
   renderer.act(() => {
     tree = renderer.create(n);
   });
+  return tree!;
+};
+
+const texts = (n: React.ReactElement): string[] => {
+  const tree = render(n);
   const found: string[] = [];
   const walk = (node: unknown): void => {
     if (Array.isArray(node)) {
@@ -22,7 +37,7 @@ const texts = (n: React.ReactElement): string[] => {
     }
     walk(children);
   };
-  walk(tree?.toJSON());
+  walk(tree.toJSON());
   return found;
 };
 
@@ -39,4 +54,28 @@ it('t-minus uses lcd text', () => {
 });
 it('stamp renders text', () => {
   expect(texts(<Stamp text="DONE" />)).toEqual(['DONE']);
+});
+// RN exports Pressable under React.memo, so instance.type is the inner
+// function — match pressables by their onPress prop instead of by type.
+// The component root also carries an onPress prop (the caller's handler),
+// so exclude it: only Pressable instances count.
+const pressables = (tree: renderer.ReactTestRenderer) =>
+  tree.root.findAll((n) => n !== tree.root && typeof n.props?.onPress === 'function');
+
+it('FilterChip press fires the selection haptic, then the handler', () => {
+  const onPress = jest.fn();
+  const tree = render(<FilterChip label="CLASSES" active onPress={onPress} />);
+  const [chip] = pressables(tree);
+  renderer.act(() => { chip!.props.onPress(); });
+  expect(Haptics.selectionAsync).toHaveBeenCalledTimes(1);
+  expect(onPress).toHaveBeenCalledTimes(1);
+});
+it('SegmentedChips press fires the selection haptic, then the handler', () => {
+  const onChange = jest.fn();
+  const tree = render(<SegmentedChips options={['SUN', 'MON']} value="SUN" onChange={onChange} />);
+  const options = pressables(tree);
+  expect(options).toHaveLength(2);
+  renderer.act(() => { options[1]!.props.onPress(); });
+  expect(Haptics.selectionAsync).toHaveBeenCalledTimes(1);
+  expect(onChange).toHaveBeenCalledWith('MON');
 });

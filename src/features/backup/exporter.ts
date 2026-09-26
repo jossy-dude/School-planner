@@ -1,6 +1,7 @@
 import { Alert } from 'react-native';
 import { strToU8, zipSync } from 'fflate';
 import { File, Paths } from 'expo-file-system';
+import * as Haptics from 'expo-haptics';
 import * as Sharing from 'expo-sharing';
 import { db } from '@/db';
 import { buildBackupJson } from '@/lib/backup/logic';
@@ -36,6 +37,8 @@ export async function exportBackup(opts: ExportOptions = {}): Promise<void> {
     if (!silent) Alert.alert('Export failed', 'The backup zip could not be created.');
     return;
   }
+  // Zip is on disk: both the silent and share-sheet paths earned the tick.
+  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
   if (silent) return;
   try {
     if (!(await Sharing.isAvailableAsync())) {

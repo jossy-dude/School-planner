@@ -1,4 +1,5 @@
 import { useCallback, useEffect } from 'react';
+import * as Haptics from 'expo-haptics';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { useCoursesStore } from '@/features/courses/store';
@@ -25,7 +26,10 @@ function DurationChips({ targetMs, disabled, onSelect }: { targetMs: number; dis
         return (
           <Pressable
             key={min}
-            onPress={disabled ? undefined : () => onSelect(min * 60_000)}
+            onPress={disabled ? undefined : () => {
+              Haptics.selectionAsync().catch(() => {});
+              onSelect(min * 60_000);
+            }}
             accessibilityRole="button"
             accessibilityLabel={`${min} minutes`}
             accessibilityState={{ selected: active, disabled }}

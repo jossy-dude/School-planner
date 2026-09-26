@@ -62,10 +62,14 @@ export const useTimerStore = create<TimerStore>((set, get) => ({
   celebration: null,
   actions: {
     start: (courseId, targetMs) => {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
       const now = Date.now();
       set({ state: startState(courseId, targetMs, now), nowMs: now, sessionStartMs: now, celebration: null });
     },
-    pause: () => set({ state: pauseState(get().state, Date.now()), nowMs: Date.now() }),
+    pause: () => {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+      set({ state: pauseState(get().state, Date.now()), nowMs: Date.now() });
+    },
     resume: () => set({ state: resumeState(get().state, Date.now()), nowMs: Date.now() }),
     reset: () => set({ state: resetState(get().state), sessionStartMs: null, nowMs: Date.now(), celebration: null }),
     dismissCelebration: () => set({ celebration: null }),

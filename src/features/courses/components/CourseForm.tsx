@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import * as Haptics from 'expo-haptics';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { router } from 'expo-router';
 import { Course } from '@/db/schema';
@@ -32,7 +33,7 @@ function Stepper({ value, onChange, min, step, suffix }:
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
       <Pressable
         accessibilityLabel={`decrease${suffix}`}
-        onPress={() => onChange(Math.max(min, value - step))}
+        onPress={() => { Haptics.selectionAsync().catch(() => {}); onChange(Math.max(min, value - step)); }}
         style={btn}
       >
         <Text style={{ fontSize: 18, color: colors.ink, fontFamily: fontFamilies.heading }}>−</Text>
@@ -42,7 +43,7 @@ function Stepper({ value, onChange, min, step, suffix }:
       </Text>
       <Pressable
         accessibilityLabel={`increase${suffix}`}
-        onPress={() => onChange(value + step)}
+        onPress={() => { Haptics.selectionAsync().catch(() => {}); onChange(value + step); }}
         style={btn}
       >
         <Text style={{ fontSize: 18, color: colors.ink, fontFamily: fontFamilies.heading }}>+</Text>

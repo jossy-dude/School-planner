@@ -1,9 +1,10 @@
 import { ReactNode, useMemo, useState } from 'react';
+import * as Haptics from 'expo-haptics';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { useSettings, useSettingsStore } from '@/features/settings/store';
 import { neededOnFinal, targetGpaNeeded } from '@/lib/gpa';
 import { BrutCard } from '@/ui/BrutCard';
-import { FilterChip, SquareIconButton, Stamp, TMinusChip } from '@/ui/primitives';
+import { EmptyState, FilterChip, SquareIconButton, Stamp, TMinusChip } from '@/ui/primitives';
 import { colors, fontFamilies, radius } from '@/ui/tokens';
 import { TARGET_LETTERS, TargetLetter, defaultTargetPct, targetPointsFor } from '../logic';
 import { GpaResultBundle } from '../store';
@@ -40,11 +41,13 @@ function Stepper({ value, step, min, max, onChange }: {
   const clamp = (v: number) => Math.min(max, Math.max(min, v));
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-      <SquareIconButton glyph="–" size={30} label="decrease" onPress={() => onChange(clamp(value - step))} />
+      <SquareIconButton glyph="–" size={30} label="decrease"
+        onPress={() => { Haptics.selectionAsync().catch(() => {}); onChange(clamp(value - step)); }} />
       <Text style={{ fontFamily: fontFamilies.lcd, fontSize: 16, color: colors.ink, minWidth: 44, textAlign: 'center' }}>
         {value}
       </Text>
-      <SquareIconButton glyph="+" size={30} label="increase" onPress={() => onChange(clamp(value + step))} />
+      <SquareIconButton glyph="+" size={30} label="increase"
+        onPress={() => { Haptics.selectionAsync().catch(() => {}); onChange(clamp(value + step)); }} />
     </View>
   );
 }
@@ -104,9 +107,7 @@ export function GpaForm({ result }: { result: GpaResultBundle }) {
   if (rows.length === 0) {
     return (
       <Section title="COURSES">
-        <Text style={{ fontFamily: fontFamilies.mono, fontSize: 13, color: colors.ink40 }}>
-          no courses in this term
-        </Text>
+        <EmptyState glyph="▣" label="no courses in this term" />
       </Section>
     );
   }

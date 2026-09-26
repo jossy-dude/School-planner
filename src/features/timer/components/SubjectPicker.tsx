@@ -1,3 +1,4 @@
+import * as Haptics from 'expo-haptics';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { Course } from '@/db/schema';
 import { colors, fontFamilies, radius } from '@/ui/tokens';
@@ -13,7 +14,7 @@ function Chip({ label, a11yLabel, active, disabled, onPress }:
   { label: string; a11yLabel?: string; active: boolean; disabled: boolean; onPress: () => void }) {
   return (
     <Pressable
-      onPress={disabled ? undefined : onPress}
+      onPress={disabled ? undefined : () => { Haptics.selectionAsync().catch(() => {}); onPress(); }}
       accessibilityRole="button"
       accessibilityLabel={a11yLabel ?? label}
       accessibilityState={{ selected: active, disabled }}

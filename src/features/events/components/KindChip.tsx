@@ -1,3 +1,4 @@
+import * as Haptics from 'expo-haptics';
 import { Pressable, Text, View } from 'react-native';
 import { EventKind, KIND_GLYPHS } from '../logic';
 import { colors, fontFamilies, radius } from '@/ui/tokens';
@@ -28,7 +29,7 @@ export function Chip({ glyph, label, active, onPress, accessibilityLabel }: {
   if (!onPress) return <View style={pill}>{text}</View>;
   return (
     <Pressable
-      onPress={onPress}
+      onPress={() => { Haptics.selectionAsync().catch(() => {}); onPress(); }}
       accessibilityRole="button"
       accessibilityState={{ selected: active }}
       accessibilityLabel={accessibilityLabel ?? label}

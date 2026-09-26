@@ -1,3 +1,4 @@
+import * as Haptics from 'expo-haptics';
 import { Pressable, Text, View } from 'react-native';
 import { colors, fontFamilies, radius } from '@/ui/tokens';
 
@@ -19,7 +20,7 @@ export function WeekdayChips({ value, onChange }: { value: number; onChange: (v:
         return (
           <Pressable
             key={day.id}
-            onPress={() => onChange(day.weekday)}
+            onPress={() => { Haptics.selectionAsync().catch(() => {}); onChange(day.weekday); }}
             accessibilityRole="button"
             accessibilityLabel={`weekday ${day.weekday}`}
             accessibilityState={{ selected: active }}

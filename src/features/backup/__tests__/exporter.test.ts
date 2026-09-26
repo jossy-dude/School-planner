@@ -7,11 +7,19 @@ import { exportBackup } from '../exporter';
 jest.mock('@/db', () => ({ db: { select: jest.fn() } }));
 jest.mock('expo-file-system', () => ({ Paths: { document: 'file:///documents' }, File: jest.fn() }));
 jest.mock('expo-sharing', () => ({ isAvailableAsync: jest.fn(), shareAsync: jest.fn() }));
+jest.mock('expo-haptics', () => ({
+  notificationAsync: jest.fn(() => Promise.resolve()),
+  NotificationFeedbackType: { Success: 'SUCCESS' },
+}));
 jest.mock('@/features/settings/queries', () => ({ writeSetting: jest.fn() }));
 
 const { db } = jest.requireMock('@/db') as { db: { select: jest.Mock } };
 const { File, Paths } = jest.requireMock('expo-file-system') as { File: jest.Mock; Paths: { document: string } };
 const sharing = jest.requireMock('expo-sharing') as { isAvailableAsync: jest.Mock; shareAsync: jest.Mock };
+const Haptics = jest.requireMock('expo-haptics') as {
+  notificationAsync: jest.Mock;
+  NotificationFeedbackType: { Success: string };
+};
 const { writeSetting } = jest.requireMock('@/features/settings/queries') as { writeSetting: jest.Mock };
 
 let fileInstance: { create: jest.Mock; write: jest.Mock; uri: string };
@@ -56,6 +64,9 @@ it('zips data.json, writes the dated file, stamps backup_last_at, then shares', 
 
   expect(writeSetting).toHaveBeenCalledWith('backup_last_at', expect.any(Number));
   expect(fileInstance.write.mock.invocationCallOrder[0]).toBeLessThan(writeSetting.mock.invocationCallOrder[0]!);
+  expect(Haptics.notificationAsync).toHaveBeenCalledWith(Haptics.NotificationFeedbackType.Success);
+  expect(fileInstance.write.mock.invocationCallOrder[0])
+    .toBeLessThan(Haptics.notificationAsync.mock.invocationCallOrder[0]!);
   expect(sharing.shareAsync).toHaveBeenCalledWith(fileInstance.uri, { mimeType: 'application/zip' });
   expect(Alert.alert).not.toHaveBeenCalled();
 });
@@ -68,6 +79,7 @@ it('does not stamp backup_last_at when the zip write throws', async () => {
   await expect(exportBackup()).resolves.toBeUndefined();
 
   expect(writeSetting).not.toHaveBeenCalled();
+  expect(Haptics.notificationAsync).not.toHaveBeenCalled();
   expect(sharing.shareAsync).not.toHaveBeenCalled();
   expect(Alert.alert).toHaveBeenCalledWith('Export failed', expect.any(String));
 });
@@ -77,6 +89,7 @@ it('silent export writes and stamps without ever touching the share sheet', asyn
 
   expect(fileInstance.write).toHaveBeenCalled();
   expect(writeSetting).toHaveBeenCalledWith('backup_last_at', expect.any(Number));
+  expect(Haptics.notificationAsync).toHaveBeenCalledWith(Haptics.NotificationFeedbackType.Success);
   expect(sharing.isAvailableAsync).not.toHaveBeenCalled();
   expect(sharing.shareAsync).not.toHaveBeenCalled();
   expect(Alert.alert).not.toHaveBeenCalled();

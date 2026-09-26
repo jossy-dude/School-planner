@@ -1,3 +1,4 @@
+import * as Haptics from 'expo-haptics';
 import { Pressable, Text, View } from 'react-native';
 import Animated, {
   SharedValue,
@@ -11,7 +12,7 @@ export function FilterChip({ label, count, active, onPress }:
   { label: string; count?: number; active: boolean; onPress: () => void }) {
   return (
     <Pressable
-      onPress={onPress}
+      onPress={() => { Haptics.selectionAsync().catch(() => {}); onPress(); }}
       style={{
         flexDirection: 'row', alignItems: 'center', gap: 6,
         paddingHorizontal: 12, paddingVertical: 6,
@@ -50,7 +51,11 @@ export function SegmentedChips({ options, value, onChange }:
       {options.map((opt) => {
         const active = opt === value;
         return (
-          <Pressable key={opt} onPress={() => onChange(opt)} style={{ flex: 1 }}>
+          <Pressable
+            key={opt}
+            onPress={() => { Haptics.selectionAsync().catch(() => {}); onChange(opt); }}
+            style={{ flex: 1 }}
+          >
             <View style={{
               paddingVertical: 6, borderRadius: radius.pill,
               backgroundColor: active ? colors.ink : 'transparent',

@@ -9,6 +9,8 @@ jest.mock('../queries', () => ({
 jest.mock('expo-haptics', () => ({
   notificationAsync: jest.fn().mockResolvedValue(undefined),
   NotificationFeedbackType: { Success: 'SUCCESS' },
+  impactAsync: jest.fn().mockResolvedValue(undefined),
+  ImpactFeedbackStyle: { Medium: 'MEDIUM' },
 }));
 
 const queries = jest.requireMock('../queries') as {
@@ -18,6 +20,8 @@ const queries = jest.requireMock('../queries') as {
 const Haptics = jest.requireMock('expo-haptics') as {
   notificationAsync: jest.Mock;
   NotificationFeedbackType: { Success: string };
+  impactAsync: jest.Mock;
+  ImpactFeedbackStyle: { Medium: string };
 };
 
 const MIN = 60_000;
@@ -67,6 +71,16 @@ it('pause projects remaining forward then freezes; resume re-stamps the anchor',
   actions().resume();
   expect(store().state.startedAtMs).toBe(T0 + 30 * MIN);
   expect(store().state.remainingMs).toBe(50 * MIN);
+});
+
+it('start and pause fire the medium impact haptic; resume stays silent', () => {
+  actions().start('c1', 45 * MIN);
+  expect(Haptics.impactAsync).toHaveBeenCalledTimes(1);
+  expect(Haptics.impactAsync).toHaveBeenCalledWith(Haptics.ImpactFeedbackStyle.Medium);
+  actions().pause();
+  expect(Haptics.impactAsync).toHaveBeenCalledTimes(2);
+  actions().resume();
+  expect(Haptics.impactAsync).toHaveBeenCalledTimes(2);
 });
 
 it('reset returns to idle with remaining = target', () => {
