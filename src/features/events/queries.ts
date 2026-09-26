@@ -11,6 +11,11 @@ export async function listEventsInRange(startMs: number, endMs: number): Promise
     .orderBy(asc(events.dueAt));
 }
 
+export async function getEventById(id: string): Promise<SchoolEvent | null> {
+  const [row] = await db.select().from(events).where(eq(events.id, id)).limit(1);
+  return row ?? null;
+}
+
 export async function insertEvent(draft: EventDraft): Promise<SchoolEvent> {
   const [row] = await db
     .insert(events)

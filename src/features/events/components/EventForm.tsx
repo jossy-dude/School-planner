@@ -35,6 +35,7 @@ export function EventForm({ event, initialDueAtMs, initialCourseId }: {
   const { create, update, remove } = useEventsStore();
   const courses = useCoursesStore((s) => s.courses);
   const refreshCourses = useCoursesStore((s) => s.refresh);
+  const coursesLoaded = useCoursesStore((s) => s.loaded);
 
   const seed = dueAtToParts(event !== undefined ? event.dueAt.getTime() : initialDueAtMs);
   const [kind, setKind] = useState<EventKind>(event?.kind ?? 'assignment');
@@ -48,8 +49,9 @@ export function EventForm({ event, initialDueAtMs, initialCourseId }: {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
+    if (coursesLoaded) return;
     void refreshCourses();
-  }, [refreshCourses]);
+  }, [coursesLoaded, refreshCourses]);
 
   const submit = async () => {
     if (!isValidDateId(dateId)) { setError('Due date must be YYYY-MM-DD'); return; }
@@ -80,10 +82,12 @@ export function EventForm({ event, initialDueAtMs, initialCourseId }: {
         text: 'Delete',
         style: 'destructive',
         onPress: async () => {
+          setBusy(true);
           try {
             await remove(event.id);
             router.back();
           } catch {
+            setBusy(false);
             setError('Could not delete event');
           }
         },
@@ -205,10 +209,12 @@ export function EventForm({ event, initialDueAtMs, initialCourseId }: {
       {event && (
         <Pressable
           onPress={confirmDelete}
+          disabled={busy}
           accessibilityRole="button"
           style={{
             borderWidth: 2, borderColor: colors.danger, backgroundColor: colors.paper,
             paddingVertical: 14, alignItems: 'center', borderRadius: radius.md,
+            opacity: busy ? 0.6 : 1,
           }}
         >
           <Text style={{ fontFamily: fontFamilies.heading, fontSize: 14, color: colors.danger }}>DELETE</Text>

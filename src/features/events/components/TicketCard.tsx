@@ -12,11 +12,13 @@ import { Chip } from './KindChip';
 export function TicketCard({ event, nowMs }: { event: SchoolEvent; nowMs: number }) {
   const courses = useCoursesStore((s) => s.courses);
   const refreshCourses = useCoursesStore((s) => s.refresh);
+  const coursesLoaded = useCoursesStore((s) => s.loaded);
   const toggleDone = useEventsStore((s) => s.toggleDone);
 
   useEffect(() => {
+    if (coursesLoaded) return;
     void refreshCourses();
-  }, [refreshCourses]);
+  }, [coursesLoaded, refreshCourses]);
 
   const course = event.courseId ? courses.find((c) => c.id === event.courseId) : undefined;
   const label = tMinusLabel(event.dueAt.getTime(), nowMs);

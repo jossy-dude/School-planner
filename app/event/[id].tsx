@@ -1,9 +1,10 @@
 import type { ReactNode } from 'react';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
+import type { SchoolEvent } from '@/db/schema';
 import { EventForm } from '@/features/events/components/EventForm';
-import { useEventsStore } from '@/features/events/store';
+import { getEventById } from '@/features/events/queries';
 import { isValidDateId } from '@/features/schedule/logic';
 import { parseDateId } from '@/lib/schedule';
 import { EmptyState, SquareIconButton } from '@/ui/primitives';
@@ -27,21 +28,26 @@ function defaultDueAtMs(dueAt?: string): number {
 
 export default function EventModal() {
   const { id, dueAt, courseId } = useLocalSearchParams<{ id?: string; dueAt?: string; courseId?: string }>();
-  const events = useEventsStore((s) => s.events);
-  const loaded = useEventsStore((s) => s.loaded);
-  const refresh = useEventsStore((s) => s.refresh);
-
-  useEffect(() => {
-    void refresh();
-  }, [refresh]);
+  const [resolved, setResolved] = useState<{ id: string; event: SchoolEvent | null } | null>(null);
 
   const isNew = id === 'new';
-  const existing = isNew ? undefined : events.find((e) => e.id === id);
+
+  useEffect(() => {
+    if (id === undefined || id === 'new') return;
+    let alive = true;
+    void getEventById(id)
+      .then((ev) => { if (alive) setResolved({ id, event: ev }); })
+      .catch(() => { if (alive) setResolved({ id, event: null }); });
+    return () => { alive = false; };
+  }, [id]);
+
+  const existing = !isNew && resolved !== null && resolved.id === id ? resolved.event : null;
+  const loading = !isNew && (resolved === null || resolved.id !== id);
 
   let content: ReactNode;
   if (!id) {
     content = <EmptyState glyph="◆" label="missing event id" />;
-  } else if (!isNew && !loaded) {
+  } else if (loading) {
     content = <EmptyState glyph="◆" label="loading…" />;
   } else if (!isNew && !existing) {
     content = <EmptyState glyph="◆" label="event not found" />;
@@ -49,7 +55,7 @@ export default function EventModal() {
     content = (
       <EventForm
         key={existing?.id ?? 'new'}
-        event={existing}
+        event={existing ?? undefined}
         initialDueAtMs={defaultDueAtMs(dueAt)}
         initialCourseId={courseId ?? null}
       />
