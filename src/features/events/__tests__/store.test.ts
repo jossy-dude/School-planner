@@ -65,6 +65,18 @@ it('eventsForDate filters by local calendar day', async () => {
   expect(s.eventsForDate('2026-09-27')).toEqual([]);
 });
 
+it('upcoming lists non-done events sorted by dueAt, limited', async () => {
+  const earlier = { ...row, id: 'e0', dueAt: new Date(2026, 8, 24, 9, 0) } as SchoolEvent;
+  const doneFirst = { ...row, id: 'e9', done: true, dueAt: new Date(2026, 8, 24, 8, 0) } as SchoolEvent;
+  queries.listEventsInRange.mockResolvedValue([row, nextDay, earlier, doneFirst]);
+  await useEventsStore.getState().refresh();
+  expect(useEventsStore.getState().upcoming(3).map((e) => e.id)).toEqual(['e0', 'e1', 'e2']);
+  expect(useEventsStore.getState().upcoming(2).map((e) => e.id)).toEqual(['e0', 'e1']);
+  expect(useEventsStore.getState().upcoming(0)).toEqual([]);
+  // derived, not mutating: source order is untouched
+  expect(useEventsStore.getState().events.map((e) => e.id)).toEqual(['e1', 'e2', 'e0', 'e9']);
+});
+
 it('create inserts the draft, refreshes, and returns the row', async () => {
   const created = await useEventsStore.getState().create(draft);
   expect(queries.insertEvent).toHaveBeenCalledWith(draft);

@@ -1,6 +1,6 @@
-import { asc, lte } from 'drizzle-orm';
 import { db } from '@/db';
-import { courses, events } from '@/db/schema';
+import { courses } from '@/db/schema';
+import { listEventsInRange } from '@/features/events/queries';
 import { listExceptions, listPatterns } from '@/features/schedule/queries';
 import { DEFAULT_SETTINGS } from '@/features/settings/logic';
 import { readAllSettings } from '@/features/settings/queries';
@@ -29,16 +29,13 @@ async function runRefresh(): Promise<void> {
     listPatterns(),
     listExceptions(),
     db.select().from(courses),
-    db.select()
-      .from(events)
-      .where(lte(events.dueAt, new Date(rangeEndMs)))
-      .orderBy(asc(events.dueAt)),
+    listEventsInRange(nowMs, rangeEndMs),
     readAllSettings(),
   ]);
   const courseById = new Map(courseRows.map((c) => [c.id, c]));
   const plan = planReminders({
     occurrences: occurrencesInRange(patternRows, exceptionRows, nowMs, rangeEndMs),
-    events: eventRows.map((e) => {
+    events: eventRows.filter((e) => !e.done).map((e) => {
       const course = e.courseId ? courseById.get(e.courseId) : undefined;
       return {
         id: e.id,

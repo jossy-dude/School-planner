@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
+import { useShallow } from 'zustand/react/shallow';
 import type { Attendance } from '@/db/schema';
 import { WeekGauge } from '@/features/attendance/components/WeekGauge';
 import { isAttended, weekStartId } from '@/features/attendance/logic';
 import { listWeekAttendance } from '@/features/attendance/queries';
+import { TicketCard } from '@/features/events/components/TicketCard';
+import { useEventsStore } from '@/features/events/store';
 import { weekOccurrences } from '@/features/schedule/selectors';
 import { useScheduleStore } from '@/features/schedule/store';
 import { useSettings, useSettingsStore } from '@/features/settings/store';
@@ -16,10 +19,14 @@ import { colors, fontFamilies } from '@/ui/tokens';
 
 const GAUGE_REFRESH_MS = 30_000;
 
+const sectionTitleStyle = {
+  fontFamily: fontFamilies.heading, fontSize: 12, color: colors.ink40, letterSpacing: 2, marginBottom: 6,
+} as const;
+
 function Section({ title, glyph, label }: { title: string; glyph: string; label: string }) {
   return (
     <BrutCard>
-      <Text style={{ fontFamily: fontFamilies.heading, fontSize: 12, color: colors.ink40, letterSpacing: 2, marginBottom: 6 }}>
+      <Text style={sectionTitleStyle}>
         {title}
       </Text>
       <EmptyState glyph={glyph} label={label} />
@@ -71,10 +78,48 @@ function AttendanceSection() {
 
   return (
     <BrutCard>
-      <Text style={{ fontFamily: fontFamilies.heading, fontSize: 12, color: colors.ink40, letterSpacing: 2, marginBottom: 6 }}>
+      <Text style={sectionTitleStyle}>
         ATTENDANCE
       </Text>
       <WeekGauge sessions={occurrences.length} attended={attended} />
+    </BrutCard>
+  );
+}
+
+function DueSection() {
+  const refreshEvents = useEventsStore((s) => s.refresh);
+  // useShallow: upcoming() returns a fresh array, and zustand v5 hands the raw
+  // selector snapshot to React's useSyncExternalStore — an uncached array loops forever.
+  const due = useEventsStore(useShallow((s) => s.upcoming(3)));
+  const [nowMs, setNowMs] = useState(() => Date.now());
+
+  // T-minus bands are minute-granular (HeroCard's 1s tick drives a seconds clock, this doesn't).
+  useEffect(() => {
+    const id = setInterval(() => setNowMs(Date.now()), 60_000);
+    return () => clearInterval(id);
+  }, []);
+
+  // Refocus reloads (event modal closed, tab switched), mirroring AttendanceSection.
+  useFocusEffect(
+    useCallback(() => {
+      void refreshEvents().catch(() => {});
+    }, [refreshEvents]),
+  );
+
+  return (
+    <BrutCard>
+      <Text style={sectionTitleStyle}>
+        DUE
+      </Text>
+      {due.length === 0 ? (
+        <EmptyState glyph="◆" label="nothing due" />
+      ) : (
+        <View style={{ gap: 12 }}>
+          {due.map((event) => (
+            <TicketCard key={event.id} event={event} nowMs={nowMs} />
+          ))}
+        </View>
+      )}
     </BrutCard>
   );
 }
@@ -89,7 +134,7 @@ export default function TodayScreen() {
       <ScrollView contentContainerStyle={{ paddingBottom: 32, gap: 16 }}>
         <HeroCard />
         <Section title="PROMISES" glyph="✓" label="no promises yet" />
-        <Section title="DUE" glyph="✎" label="nothing due" />
+        <DueSection />
         <AttendanceSection />
       </ScrollView>
     </View>

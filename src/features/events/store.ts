@@ -21,6 +21,7 @@ interface EventsState {
   loaded: boolean;
   refresh: (startMs?: number, endMs?: number) => Promise<void>;
   eventsForDate: (dateId: string) => SchoolEvent[];
+  upcoming: (limit: number) => SchoolEvent[];
   create: (draft: EventDraft) => Promise<SchoolEvent>;
   update: (id: string, patch: EventPatch) => Promise<void>;
   remove: (id: string) => Promise<void>;
@@ -41,6 +42,12 @@ export const useEventsStore = create<EventsState>((set, get) => ({
     void refreshReminders().catch(() => {});
   },
   eventsForDate: (dateId) => get().events.filter((e) => toDateId(e.dueAt) === dateId),
+  // filter() copies, so the in-place sort never reorders the stored events.
+  upcoming: (limit) =>
+    get()
+      .events.filter((e) => !e.done)
+      .sort((a, b) => a.dueAt.getTime() - b.dueAt.getTime())
+      .slice(0, limit),
   create: async (draft) => {
     const row = await insertEvent(draft);
     await get().refresh();

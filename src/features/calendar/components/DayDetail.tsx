@@ -3,9 +3,11 @@ import type { AttendanceStatus } from '@/features/attendance/logic';
 import { statusStamp } from '@/features/attendance/logic';
 import { AttendanceButtons } from '@/features/attendance/components/AttendanceButtons';
 import type { CalendarFilter, DotEvent } from '@/features/calendar/dots';
+import { KIND_GLYPHS, tMinusLabel } from '@/features/events/logic';
 import type { Occurrence } from '@/lib/schedule';
-import { EmptyState, SquareIconButton, Stamp } from '@/ui/primitives';
+import { EmptyState, SquareIconButton, Stamp, TMinusChip } from '@/ui/primitives';
 import { colors, fontFamilies, hardShadow } from '@/ui/tokens';
+import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import Animated, {
@@ -44,6 +46,10 @@ interface DetailRow {
   emoji: string;
   title: string;
   courseId?: string | null;
+  // Event rows (EXAMS/TASKS/CLUBS) carry their id + due time: they render a
+  // T-minus chip instead of the clock slot and open the edit modal on press.
+  eventId?: string;
+  dueAtMs?: number;
 }
 
 interface DetailSection {
@@ -123,6 +129,13 @@ export function DayDetail({
     backdrop.value = withTiming(BACKDROP_ALPHA, { duration: 200 });
   }, [closing, target, start, onClose, x, y, w, h, alpha, backdrop]);
 
+  // T-minus chips tick once a minute — the label bands are minute-granular.
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNowMs(Date.now()), 60_000);
+    return () => clearInterval(id);
+  }, []);
+
   const close = () => setClosing(true);
 
   const panelStyle = useAnimatedStyle(() => ({
@@ -144,6 +157,21 @@ export function DayDetail({
     const want = (f: CalendarFilter) => all || filters.includes(f);
     const course = (id?: string | null) => (id ? courses.find((c) => c.id === id) : undefined);
     const out: DetailSection[] = [];
+    // Event rows sort by dueAt and carry the kind glyph; at render they swap the
+    // clock slot for a T-minus chip, which is what makes them read as events.
+    const eventRows = (pick: (e: DotEvent) => boolean, fallbackTitle: string): DetailRow[] =>
+      events
+        .filter(pick)
+        .sort((a, b) => a.dueAtMs - b.dueAtMs)
+        .map((e) => ({
+          key: e.id,
+          time: hhmm(e.dueAtMs),
+          emoji: KIND_GLYPHS[e.kind],
+          title: e.title ?? fallbackTitle,
+          courseId: e.courseId,
+          eventId: e.id,
+          dueAtMs: e.dueAtMs,
+        }));
     if (want('CLASSES')) {
       out.push({
         key: 'CLASSES',
@@ -158,36 +186,21 @@ export function DayDetail({
       out.push({
         key: 'EXAMS',
         label: 'EXAMS',
-        rows: events
-          .filter((e) => e.kind === 'test' || e.kind === 'quiz')
-          .map((e) => {
-            const c = course(e.courseId);
-            return { key: e.id, time: hhmm(e.dueAtMs), emoji: c?.emoji ?? '📝', title: e.title ?? 'EXAM', courseId: e.courseId };
-          }),
+        rows: eventRows((e) => e.kind === 'test' || e.kind === 'quiz', 'EXAM'),
       });
     }
     if (want('TASKS')) {
       out.push({
         key: 'TASKS',
         label: 'TASKS',
-        rows: events
-          .filter((e) => e.kind === 'assignment' && !e.done)
-          .map((e) => {
-            const c = course(e.courseId);
-            return { key: e.id, time: hhmm(e.dueAtMs), emoji: c?.emoji ?? '📋', title: e.title ?? 'TASK', courseId: e.courseId };
-          }),
+        rows: eventRows((e) => e.kind === 'assignment' && !e.done, 'TASK'),
       });
     }
     if (want('CLUBS')) {
       out.push({
         key: 'CLUBS',
         label: 'CLUBS',
-        rows: events
-          .filter((e) => e.kind === 'club')
-          .map((e) => {
-            const c = course(e.courseId);
-            return { key: e.id, time: hhmm(e.dueAtMs), emoji: c?.emoji ?? '🎯', title: e.title ?? 'CLUB', courseId: e.courseId };
-          }),
+        rows: eventRows((e) => e.kind === 'club', 'CLUB'),
       });
     }
     if (absences.length > 0) {
@@ -261,9 +274,32 @@ export function DayDetail({
               </View>
               {sec.rows.map((row) => {
                 const courseId = row.courseId;
+                const eventId = row.eventId;
+                const dueAtMs = row.dueAtMs;
                 const markable = sec.key === 'CLASSES' && !!courseId && !!onMarkAttendance;
                 const status = markable && courseId ? statusByCourse.get(courseId) : undefined;
                 const stamp = status ? statusStamp(status) : null;
+                if (eventId !== undefined && dueAtMs !== undefined) {
+                  const label = tMinusLabel(dueAtMs, nowMs);
+                  return (
+                    <Pressable
+                      key={row.key}
+                      onPress={() => router.push({ pathname: '/event/[id]', params: { id: eventId } })}
+                      accessibilityRole="button"
+                      accessibilityLabel={`edit ${row.title}`}
+                      hitSlop={4}
+                      style={({ pressed }) => [{
+                        flexDirection: 'row', alignItems: 'center', gap: 10, opacity: pressed ? 0.6 : 1,
+                      }]}
+                    >
+                      <TMinusChip text={label} tone={label === 'OVERDUE' ? 'danger' : 'ink'} />
+                      <Text style={{ fontSize: 16 }}>{row.emoji}</Text>
+                      <Text numberOfLines={1} style={{ flex: 1, fontFamily: fontFamilies.mono, fontSize: 13, color: colors.ink }}>
+                        {row.title}
+                      </Text>
+                    </Pressable>
+                  );
+                }
                 return (
                   <View key={row.key} style={{ gap: 4 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
