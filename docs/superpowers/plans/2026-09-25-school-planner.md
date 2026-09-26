@@ -2784,23 +2784,30 @@ const mon = new Date(2026, 8, 28).getTime(); // Monday
 const p = { id: 'x', courseId: 'c1', subject: 'Maths', targetMin: 60, period: 'week' as const };
 it('sums sessions inside current week window', () => {
   const r = promiseProgress(p, [
-    { startedAtMs: mon + 3600_000, durationMin: 30 },
-    { startedAtMs: mon - 7 * 86_400_000, durationMin: 45 }, // previous week — excluded
-    { startedAtMs: mon + 7200_000, durationMin: 60 },
+    { startedAtMs: mon + 3600_000, durationMin: 30, courseId: 'c1' },
+    { startedAtMs: mon - 7 * 86_400_000, durationMin: 45, courseId: 'c1' }, // previous week — excluded
+    { startedAtMs: mon + 7200_000, durationMin: 60, courseId: 'c1' },
   ], mon + 86_400_000, 'monday');
   expect(r.doneMin).toBe(90);
   expect(r.ratio).toBe(1); // capped
 });
 it('filters by course when set', () => {
-  const r = promiseProgress(p, [{ startedAtMs: mon + 1000, durationMin: 45, }], mon + 2000, 'monday');
+  const r = promiseProgress(p, [{ startedAtMs: mon + 1000, durationMin: 45, courseId: 'c1' }], mon + 2000, 'monday');
   expect(r.doneMin).toBe(45);
-  const none = promiseProgress({ ...p, courseId: 'other' }, [{ startedAtMs: mon + 1000, durationMin: 45 }], mon + 2000, 'monday');
+  const none = promiseProgress({ ...p, courseId: 'other' }, [{ startedAtMs: mon + 1000, durationMin: 45, courseId: 'c1' }], mon + 2000, 'monday');
   expect(none.doneMin).toBe(0);
 });
 ```
 Session type in this module carries optional `courseId`; add it to the `sessions` param type.
 
 Run FAIL → implement per window rules → PASS.
+
+> **ADJUDICATION (controller, pre-dispatch):**
+> 1. **Pinned tests amended (they were unsatisfiable):** original literals had no `courseId` on sessions, yet the same session must count 45 for `p.courseId='c1'` and 0 for `'other'` — no consistent predicate satisfies both. Sessions now carry `courseId: 'c1'`. **Matching rule: `p.courseId === null || session.courseId === p.courseId`** (promise null = all subjects per window-rules line; a null/undefined-course session counts ONLY toward all-subjects promises — a subject-specific promise never credits anonymous sessions).
+> 2. **Add a day-window pin (prose had none):** sessions on the same local date as `nowMs` count; a session 1 day earlier does not — compare local calendar dates (`toDateId`-style), NOT ms arithmetic (DST-safe). Also pin: week window with `weekStart: 'sunday'` excludes a Monday-start boundary session.
+> 3. **Celebration trigger:** mascot overlay fires on auto-finish (countdown 0) and on manual `■` finish ONLY when a session row is logged (elapsed ≥ 60 s, Task 21 rule); manual < 60 s → no overlay. Touches `src/features/timer/store.ts` (authorized — Task 21 left a `// Task 22` hook): add a `celebration` field (e.g. `{ minutes: number; auto: boolean } | null`) set on logged finishes, cleared on overlay dismiss/timer restart. Overlay content: Mascot blink + `Stamp text="DONE"` + `{minutes}M`; auto-dismiss after 4 s or on tap.
+> 4. **Promise CRUD architecture (plan lists today.tsx AND timer.tsx — de-duplicated):** shared `src/features/promises/{queries,store}.ts` (new, authorized; drizzle-only queries incl. `listSessionsSince(sinceMs)` for progress windows). `today.tsx` PROMISES section = list + inline add (`+`) + long-press delete (Task 19 precedent; no edit flow — disclose). `timer.tsx` = mascot overlay ONLY (no second CRUD UI — disclosure). `weekStart` argument comes from the `week_start` setting (default `'monday'`, `src/features/settings/logic.ts:15`); `promiseProgress` stays pure with the param.
+> 5. **Step 4's "5-min timer" is unreachable** (duration chips are 25/45/60/90): substitute verification = component/unit test proving the wiring (insert session → PromiseBar ratio ticks; finish → celebration set) + bundle smoke. Literal device flow → Task 26 QA (ledger note).
 
 - [ ] **Step 2: PromiseBar + Today wiring** — PROMISES section: `EmptyState glyph="◔" label="no promises — set one"` when empty.
 
