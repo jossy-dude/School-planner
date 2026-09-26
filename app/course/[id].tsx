@@ -14,6 +14,7 @@ import { ScoreBar } from '@/features/grades/components/ScoreBar';
 import { useGrades } from '@/features/grades/store';
 import { NoteList } from '@/features/notes/components/NoteList';
 import { useNotes } from '@/features/notes/store';
+import { ExceptionList } from '@/features/schedule/components/ExceptionList';
 import { PatternRow } from '@/features/schedule/components/PatternRow';
 import { useSchedule } from '@/features/schedule/store';
 import { EmptyState, SquareIconButton, Stamp } from '@/ui/primitives';
@@ -296,24 +297,7 @@ export default function CourseScreen() {
                   onDelete={() => confirmDeletePattern(p)}
                 />
               ))}
-              {exceptions.length > 0 && (
-                <View style={{ gap: 6 }}>
-                  <Text style={{ fontFamily: fontFamilies.mono, fontSize: 11, color: colors.ink40, letterSpacing: 1 }}>
-                    EXCEPTIONS
-                  </Text>
-                  {exceptions.map((e) => (
-                    <View key={e.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                      <Text style={{ fontFamily: fontFamilies.mono, fontSize: 13, color: colors.ink70 }}>
-                        {e.date}
-                      </Text>
-                      <Stamp
-                        text={e.kind === 'cancelled' ? 'CANCELLED' : 'EXTRA'}
-                        tone={e.kind === 'cancelled' ? 'danger' : 'ink'}
-                      />
-                    </View>
-                  ))}
-                </View>
-              )}
+              <ExceptionList courseId={id} />
             </View>
           )}
         </View>

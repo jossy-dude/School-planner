@@ -80,3 +80,13 @@ export function validatePattern(input: {
     },
   };
 }
+
+export function validateException(input: { date?: string; kind?: string }): { ok: boolean; error?: string } {
+  if (!isValidDateId((input.date ?? '').trim())) {
+    return { ok: false, error: 'Date must be YYYY-MM-DD' };
+  }
+  if (input.kind !== 'cancelled' && input.kind !== 'one_off') {
+    return { ok: false, error: 'Kind must be CANCELLED or EXTRA' };
+  }
+  return { ok: true };
+}

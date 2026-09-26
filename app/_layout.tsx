@@ -57,6 +57,7 @@ export default function RootLayout() {
         <Stack.Screen name="event/[id]" options={{ presentation: 'modal' }} />
         <Stack.Screen name="grade/[id]" options={{ presentation: 'modal' }} />
         <Stack.Screen name="note-edit" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="exception-edit" options={{ presentation: 'modal' }} />
         <Stack.Screen name="course/[id]" />
         <Stack.Screen name="settings" />
       </Stack>
