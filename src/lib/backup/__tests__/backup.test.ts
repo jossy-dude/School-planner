@@ -1,6 +1,7 @@
 import { buildBackupJson, parseBackupJson, shouldAutoBackup } from '../logic';
 it('roundtrips payload', () => {
   const { manifest, payload } = buildBackupJson({ courses: [{ id: 'c1', name: 'Maths' }] });
+  expect(manifest.tables.courses).toBe(1);
   const parsed = parseBackupJson(payload);
   expect(parsed?.manifest.app).toBe('school-planner');
   expect(parsed?.tables.courses).toHaveLength(1);
