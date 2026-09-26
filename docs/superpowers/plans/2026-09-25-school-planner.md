@@ -2823,7 +2823,9 @@ git commit -m "feat: study promises with tick-bar progress and mascot moment"
 
 ---
 
-### Task 23: File vault
+### Task 23: File vault — ❌ DROPPED (user decision, pre-dispatch)
+
+> **DROP NOTICE:** The file vault is cut from scope; the vault tab renders a "coming soon" placeholder (`app/(tabs)/vault.tsx`: VAULT heading + `EmptyState glyph="▤" label="coming soon"`). The Task 23 dispatch was cancelled before any code was written; the `files` table stays in the schema (Task 5, migrated) but has no UI. The pre-dispatch adjudication below (commit `99b2fe6`) is retained as history and MAY be revived if vault is ever rescheduled. Downstream amendments: Task 25 no longer zips/copies `files/*`; Task 26 QA item 8 replaced.
 
 **Files:**
 - Create: `src/features/vault/logic.ts`, `src/features/vault/__tests__/logic.test.ts`
@@ -2946,8 +2948,8 @@ export function parseBackupJson(json: string): { manifest: BackupManifest; table
 export function shouldAutoBackup(lastAtMs: number | null, intervalDays: number, nowMs: number): boolean;
 ```
 Rules: `parseBackupJson` validates `app === 'school-planner'` + `version === 1` + tables object; unknown version → null (show error, no partial import). `shouldAutoBackup`: `lastAt === null` → true only if any data exists? No — true (first backup); `now - last >= intervalDays*86400000` → true.
-- RN exporter: gather every table via `db.select().from(t)`; JSON → `zipSync({ 'data.json': str, 'files/<name>': bytes... })` (vault files read via `new File(uri).bytes()`); write `backup-<dateId>.zip` under `Paths.document/backups/`; `Sharing.shareAsync(uri, { mimeType: 'application/zip' })`; then `settings.backup_last_at = now`.
-- RN importer: pick `.zip` via DocumentPicker → `unzipSync` → `parseBackupJson` → confirm `Alert.alert('Replace all data?', …)` → in ONE drizzle transaction: delete all rows of every table (FK order: children first) → insert rows → copy `files/*` back into vault dir (rewrite `sandboxUri`) → relaunch stores (`refresh()` all stores) + `refreshReminders()`.
+- RN exporter: gather every table via `db.select().from(t)`; JSON → `zipSync({ 'data.json': str })` (no `files/*` — vault dropped, Task 23 DROP NOTICE: the `files` table serializes as an always-empty array like every other table); write `backup-<dateId>.zip` under `Paths.document/backups/`; `Sharing.shareAsync(uri, { mimeType: 'application/zip' })`; then `settings.backup_last_at = now`.
+- RN importer: pick `.zip` via DocumentPicker → `unzipSync` → `parseBackupJson` → confirm `Alert.alert('Replace all data?', …)` → in ONE drizzle transaction: delete all rows of every table (FK order: children first) → insert rows → relaunch stores (`refresh()` all stores) + `refreshReminders()` (no vault dir copy — Task 23 dropped).
 - Settings BACKUP section: `EXPORT ZIP` button (square icon + label), `IMPORT` (danger-stamped confirm), interval chips 1/3/7/14, `LAST: <dateId>` in mono.
 - App open hook (root layout after migration): `if (shouldAutoBackup(...)) { await exportBackup({ silent: true }); }` — silent = write zip file to `backups/` without sharing sheet.
 
@@ -3013,7 +3015,7 @@ git commit -m "feat: ZIP backup export/import with auto-backup on open"
   5. Events: create exam `T-6D` chip + description on Today; done stamp; notification scheduled (check Android notification shade).
   6. GPA: grades → final % → gauge; exclude toggles; rounding; scale editor validation; target + needed-on-final bands.
   7. Timer: 1-min run → arc depletes → haptic + mascot + session logged; promise bar advanced.
-  8. Vault: import PDF → open → describe → delete.
+  8. Vault: tab renders coming-soon placeholder (Task 23 dropped — no import flows).
   9. Notes: add exam tip → appears.
   10. Backup: export ZIP → import (confirm) → data restored.
   11. Settings: values persist across kill/relaunch.
@@ -3032,7 +3034,7 @@ git commit -m "feat: polish pass — empty states, haptics, motion, QA fixes"
 
 ## Plan Self-Review
 
-**Spec coverage:** Sections 1–10 of the spec map to tasks: architecture/scaffold (T1–T5), fonts (T2), design system incl. grain/press-depth/primitives/nav (T3–T4), all 14 tables (T5), courses (T6), settings (T7), schedule+Today+reminders (T8–T12), calendar+filters+day detail+attendance (T13–T15), events+T-minus+agenda (T16–T17), GPA engine/grades/screen/scale editor (T18–T20), timer (T21), promises+mascot (T22), vault (T23), notes (T24), backup (T25), polish+haptics+QA (T26). Spec §7 research verdicts are baked into T13 (flash-calendar theme/children), T11 (animata tick bar exact constants), T20 (custom SVG controls), T1 (no rejected deps). Spec §10 risks: Doto jitter (T2 smoke), Skia shader fallback (T3), fflate smoke (T25), flash-calendar internals read installed types (T14).
+**Spec coverage:** Sections 1–10 of the spec map to tasks: architecture/scaffold (T1–T5), fonts (T2), design system incl. grain/press-depth/primitives/nav (T3–T4), all 14 tables (T5), courses (T6), settings (T7), schedule+Today+reminders (T8–T12), calendar+filters+day detail+attendance (T13–T15), events+T-minus+agenda (T16–T17), GPA engine/grades/screen/scale editor (T18–T20), timer (T21), promises+mascot (T22), vault (T23 — DROPPED pre-dispatch, coming-soon tab), notes (T24), backup (T25), polish+haptics+QA (T26). Spec §7 research verdicts are baked into T13 (flash-calendar theme/children), T11 (animata tick bar exact constants), T20 (custom SVG controls), T1 (no rejected deps). Spec §10 risks: Doto jitter (T2 smoke), Skia shader fallback (T3), fflate smoke (T25), flash-calendar internals read installed types (T14).
 
 **Placeholders:** none — every step carries code, commands, or explicit test bodies. T14 and T11 include explicit "read installed types / correct this math" directives with the exact final behavior specified (not TBD).
 
