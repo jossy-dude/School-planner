@@ -2520,9 +2520,6 @@ Rules (from spec):
 - `computeGpa`: include courses where `!excluded && finalPct !== null && credits > 0`; `gpa = Σ(points * credits) / Σ(credits)`; round with `rounding` decimals (0–3); no included → `{ gpa: null, totalCredits: 0, includedCount: 0 }`.
 - `targetGpaNeeded`: remaining = courses with `finalPct === null && !excluded && credits > 0`; done = included with pct; if no remaining → null; `needed = (target * (doneCredits + remCredits) - Σ(points*credits)_done) / remCredits` (points-space average).
 - `neededOnFinal`: `current = (currentPct * (1 - finalWeight) + needed * finalWeight)` → `needed = (targetPct - currentPct * (1 - finalWeight)) / finalWeight`; band: `needed <= 70 → safe`, `70 < needed <= 100 → borderline`, `> 100 → impossible`; `finalWeight` must be in (0, 1] — invalid → needed NaN guard returns `impossible` with neededPct 0? No: throw-free — return `{ neededPct: 0, band: 'impossible' }` only when weight ≤ 0.
-- `computeGpa`: include courses where `!excluded && finalPct !== null && credits > 0`; `gpa = Σ(points * credits) / Σ(credits)`; round with `rounding` decimals (0–3); no included → `{ gpa: null, totalCredits: 0, includedCount: 0 }`.
-- `targetGpaNeeded`: remaining = courses with `finalPct === null && !excluded && credits > 0`; done = included with pct; if no remaining → null; `needed = (target * (doneCredits + remCredits) - Σ(points*credits)_done) / remCredits` (points-space average).
-- `neededOnFinal`: `current = (currentPct * (1 - finalWeight) + needed * finalWeight)` → `needed = (targetPct - currentPct * (1 - finalWeight)) / finalWeight`; band: `needed <= 70 → safe`, `70 < needed <= 100 → borderline`, `> 100 → impossible`; `finalWeight` must be in (0, 1] — invalid → needed NaN guard returns `impossible` with neededPct 0? No: throw-free — return `{ neededPct: 0, band: 'impossible' }` only when weight ≤ 0.
 
 - [ ] **Step 1: Failing tests (core of the task)**
 
