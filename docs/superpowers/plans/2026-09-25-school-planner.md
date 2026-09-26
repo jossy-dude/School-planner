@@ -2708,12 +2708,14 @@ git commit -m "feat: GPA gauge screen with compact form and scale editor"
 ```ts
 export type TimerStatus = 'idle' | 'running' | 'paused';
 export interface TimerState { status: TimerStatus; courseId: string | null; startedAtMs: number | null; remainingMs: number; targetMs: number; }
-export function elapsedMs(state: TimerState, nowMs: number): number;   // running: (now-startedAt) + accumulated; paused/idle: accumulated
+export function elapsedMs(state: TimerState, nowMs: number): number;   // AMENDED: max(0, targetMs - remainingMs) for ALL statuses (see note below; nowMs kept for API symmetry with the pinned tests)
 export function tick(state: TimerState, nowMs: number): TimerState;    // returns state with remainingMs updated (running only)
 export function finished(state: TimerState, nowMs: number): boolean;
 export function progressOf(state: TimerState): number;                 // 0..1 elapsed/target
 ```
 Store rules: `start(courseId, targetMs)` sets running with `startedAtMs = now`; `pause()` freezes accumulated = target - remaining; `resume()` re-stamps `startedAtMs`; `reset()` → idle with remaining = target; on `finished` → persist `study_sessions` row (`durationMin = Math.round(targetMs/60000)`) via `Haptics.notificationAsync(Success)` + mascot moment (Task 22), status → idle.
+
+> **AMENDMENT (controller, pre-dispatch):** the original `elapsedMs` prose ("running: (now-startedAt) + accumulated") contradicts the pinned test — for `{started:1000, remaining:45000}` at `now=16000` the prose formula yields 30000 but the test asserts **15000**. Tests win (Tasks 9/16/18 precedent). Correct rule: **`elapsedMs = max(0, targetMs - remainingMs)` for ALL statuses** (remainingMs is kept current by the 1s tick and frozen on pause; this is correct across pause/resume because pause freezes remaining and resume re-stamps the anchor without touching remaining). `nowMs` stays in the signature (tests call it) but does not change the value; if lint flags it unused, reference it harmlessly (finite-guard). `finished` KEEPS the anchor projection `max(0, remainingMs - (now - startedAt)) <= 0` for running (pinned test passes; catches expiry between ticks); paused/idle use `remainingMs <= 0`. `progressOf = clamp((target - remainingMs)/target, 0, 1)` (target<=0 → 1 when remaining<=0 else 0). Note the sub-second asymmetry (elapsed trusts remaining as-of-last-tick, finished projects forward) is harmless because ticks run every 1s.
 - Screen: `TimerFace` = `DotArcClock` + `formatCountdown(remaining)`; duration chips `25/45/60/90 MIN` (DSEG7); `SubjectPicker` = horizontal course emoji chips + `NONE`; controls: `▶` start / `⏸` pause / `↻` reset / `■` finish (square hard-shadow buttons); `SessionHistory` = last 10 sessions (course emoji + `45M` DSEG7 + date mono).
 
 - [ ] **Step 1: Failing pure tests**
