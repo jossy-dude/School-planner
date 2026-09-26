@@ -8,7 +8,11 @@ const boxStyle = {
   paddingVertical: 6, paddingHorizontal: 8, textAlign: 'center' as const, minWidth: 46,
 } as const;
 
-export function TimeField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+export function TimeField({ value, onChange, label }: {
+  value: string;
+  onChange: (v: string) => void;
+  label?: string;
+}) {
   const [hh = '', mm = ''] = value.split(':');
   const invalid = hh !== '' && mm !== '' && !isValidTime(value);
   const borderColor = invalid ? colors.danger : colors.ink;
@@ -29,7 +33,7 @@ export function TimeField({ value, onChange }: { value: string; onChange: (v: st
         maxLength={2}
         placeholder="00"
         placeholderTextColor={colors.ink40}
-        accessibilityLabel="hour"
+        accessibilityLabel={label ? `${label} hour` : 'hour'}
         style={[boxStyle, { borderColor }]}
       />
       <Text style={{ fontFamily: fontFamilies.mono, fontSize: 16, color: colors.ink40 }}>:</Text>
@@ -41,7 +45,7 @@ export function TimeField({ value, onChange }: { value: string; onChange: (v: st
         maxLength={2}
         placeholder="00"
         placeholderTextColor={colors.ink40}
-        accessibilityLabel="minute"
+        accessibilityLabel={label ? `${label} minute` : 'minute'}
         style={[boxStyle, { borderColor }]}
       />
     </View>

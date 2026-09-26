@@ -81,12 +81,34 @@ export function validatePattern(input: {
   };
 }
 
-export function validateException(input: { date?: string; kind?: string }): { ok: boolean; error?: string } {
+export function validateException(input: {
+  date?: string;
+  kind?: string;
+  patternId?: string | null;
+  startTime?: string | null;
+  endTime?: string | null;
+}): { ok: boolean; error?: string } {
   if (!isValidDateId((input.date ?? '').trim())) {
     return { ok: false, error: 'Date must be YYYY-MM-DD' };
   }
   if (input.kind !== 'cancelled' && input.kind !== 'one_off') {
     return { ok: false, error: 'Kind must be CANCELLED or EXTRA' };
   }
+  if (input.kind === 'cancelled' && !input.patternId) {
+    return { ok: false, error: 'Pick the class to cancel' };
+  }
+  if (input.kind === 'one_off') {
+    const start = (input.startTime ?? '').trim();
+    const end = (input.endTime ?? '').trim();
+    if (!isValidTime(start) || !isValidTime(end)) {
+      return { ok: false, error: 'Enter valid start and end times (00:00–23:59)' };
+    }
+  }
   return { ok: true };
+}
+
+const WEEKDAY_SHORT = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+
+export function patternLabel(pattern: { weekday: number; startTime: string; endTime: string }): string {
+  return `${WEEKDAY_SHORT[pattern.weekday] ?? '?'} ${pattern.startTime}–${pattern.endTime}`;
 }

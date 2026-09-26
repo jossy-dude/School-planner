@@ -1,6 +1,6 @@
 import { Alert } from 'react-native';
 import renderer, { act } from 'react-test-renderer';
-import { ScheduleException } from '@/db/schema';
+import { Pattern, ScheduleException } from '@/db/schema';
 import { ExceptionList } from '../components/ExceptionList';
 
 jest.mock('expo-router', () => ({
@@ -62,6 +62,20 @@ const exception = (over: Partial<ScheduleException> = {}): ScheduleException =>
     ...over,
   }) as ScheduleException;
 
+const pattern = (over: Partial<Pattern> = {}): Pattern =>
+  ({
+    id: 'p1',
+    courseId: 'c1',
+    weekday: 1,
+    startTime: '08:00',
+    endTime: '09:30',
+    location: null,
+    validFrom: null,
+    validTo: null,
+    updatedAt: new Date(),
+    ...over,
+  }) as Pattern;
+
 let removeException: jest.Mock;
 
 beforeEach(() => {
@@ -69,6 +83,7 @@ beforeEach(() => {
   jest.spyOn(Alert, 'alert').mockImplementation(() => {});
   removeException = jest.fn().mockResolvedValue(undefined);
   scheduleStore.useSchedule.mockReturnValue({
+    patterns: [],
     exceptions: [exception()],
     removeException,
   });
@@ -95,7 +110,7 @@ it('renders the EXCEPTIONS header and rows, and the + opens the create modal', a
 });
 
 it('shows a muted none-yet hint when the course has no exceptions', async () => {
-  scheduleStore.useSchedule.mockReturnValue({ exceptions: [], removeException });
+  scheduleStore.useSchedule.mockReturnValue({ patterns: [], exceptions: [], removeException });
   const { found } = await render();
   expect(found).toContain('EXCEPTIONS');
   expect(found).toContain('none yet');
@@ -127,4 +142,39 @@ it('tapping a row is a no-op in create-only mode', async () => {
   const { tree } = await render();
   const rows = tree.root.findAll((n) => typeof n.props?.onLongPress === 'function');
   expect(rows[0]!.props.onPress).toBeUndefined();
+});
+
+
+it('names the bound class window on a cancelled row', async () => {
+  scheduleStore.useSchedule.mockReturnValue({
+    patterns: [pattern()],
+    exceptions: [exception({ patternId: 'p1' })],
+    removeException,
+  });
+  const { found } = await render();
+  expect(found).toContain('CANCELLED');
+  expect(found).toContain('MON 08:00–09:30');
+});
+
+it('shows the collected times on an EXTRA row', async () => {
+  scheduleStore.useSchedule.mockReturnValue({
+    patterns: [],
+    exceptions: [exception({ id: 'e2', kind: 'one_off', startTime: '14:00', endTime: '15:00' })],
+    removeException,
+  });
+  const { found } = await render();
+  expect(found).toContain('EXTRA');
+  expect(found).toContain('14:00–15:00');
+});
+
+it('omits the window when the bound pattern is gone or the times are absent', async () => {
+  scheduleStore.useSchedule.mockReturnValue({
+    patterns: [],
+    exceptions: [exception({ patternId: 'p-gone' }), exception({ id: 'e3', kind: 'one_off' })],
+    removeException,
+  });
+  const { found } = await render();
+  expect(found).toContain('CANCELLED');
+  expect(found).not.toContain('p-gone');
+  expect(found.filter((t) => t.includes('–'))).toHaveLength(0);
 });

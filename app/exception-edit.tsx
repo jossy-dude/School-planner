@@ -1,13 +1,18 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { validateException } from '@/features/schedule/logic';
+import { TimeField } from '@/features/schedule/components/TimeField';
+import { ExceptionDraft, patternLabel, validateException } from '@/features/schedule/logic';
 import { useSchedule } from '@/features/schedule/store';
-import { EmptyState, SegmentedChips, SquareIconButton } from '@/ui/primitives';
+import { EmptyState, FilterChip, SegmentedChips, SquareIconButton } from '@/ui/primitives';
 import { colors, fontFamilies, hardShadow, radius } from '@/ui/tokens';
 
 const label = {
   fontFamily: fontFamilies.mono, fontSize: 11, color: colors.ink40, letterSpacing: 1,
+} as const;
+
+const hint = {
+  fontFamily: fontFamilies.mono, fontSize: 12, color: colors.ink40,
 } as const;
 
 const fieldBox = {
@@ -33,21 +38,47 @@ function isDuplicateException(error: unknown): boolean {
 }
 
 function ExceptionForm({ courseId }: { courseId: string }) {
-  const { saveException } = useSchedule(courseId);
+  const { patterns, refresh, saveException } = useSchedule(courseId);
   const [kind, setKind] = useState<'cancelled' | 'one_off'>('cancelled');
   const [date, setDate] = useState('');
+  const [patternId, setPatternId] = useState<string | null>(null);
+  const [startTime, setStartTime] = useState('');
+  const [endTime, setEndTime] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const valid = validateException({ date, kind }).ok;
+  useEffect(() => { refresh(); }, [refresh]);
+
+  const canCancel = patterns.length > 0;
+  const activeKind: 'cancelled' | 'one_off' = canCancel ? kind : 'one_off';
+  const boundPatternId = activeKind !== 'cancelled'
+    ? null
+    : (patterns.length === 1 ? patterns[0]?.id ?? null : patternId);
+
+  const check = validateException({
+    date,
+    kind: activeKind,
+    patternId: boundPatternId,
+    startTime,
+    endTime,
+  });
+  const valid = check.ok;
 
   const submit = async () => {
-    const check = validateException({ date, kind });
     if (!check.ok) { setError(check.error ?? 'Check the form'); return; }
     setError(null);
     setBusy(true);
+    const payload: ExceptionDraft = activeKind === 'cancelled'
+      ? { courseId, date: date.trim(), kind: 'cancelled', patternId: boundPatternId }
+      : {
+        courseId,
+        date: date.trim(),
+        kind: 'one_off',
+        startTime: startTime.trim(),
+        endTime: endTime.trim(),
+      };
     try {
-      await saveException({ courseId, date: date.trim(), kind });
+      await saveException(payload);
       router.back();
     } catch (e) {
       setBusy(false);
@@ -59,6 +90,8 @@ function ExceptionForm({ courseId }: { courseId: string }) {
     }
   };
 
+  const kindOptions = canCancel ? ['CANCELLED', 'EXTRA'] : ['EXTRA'];
+
   return (
     <ScrollView
       style={{ flex: 1 }}
@@ -68,11 +101,29 @@ function ExceptionForm({ courseId }: { courseId: string }) {
       <View style={{ gap: 6 }}>
         <Text style={label}>KIND</Text>
         <SegmentedChips
-          options={['CANCELLED', 'EXTRA']}
-          value={kind === 'cancelled' ? 'CANCELLED' : 'EXTRA'}
+          options={kindOptions}
+          value={activeKind === 'cancelled' ? 'CANCELLED' : 'EXTRA'}
           onChange={(v) => setKind(v === 'CANCELLED' ? 'cancelled' : 'one_off')}
         />
+        {!canCancel && <Text style={hint}>no class times to cancel yet</Text>}
       </View>
+
+      {activeKind === 'cancelled' && patterns.length > 1 && (
+        <View style={{ gap: 6 }}>
+          <Text style={label}>CLASS TO CANCEL</Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+            {patterns.map((p) => (
+              <FilterChip
+                key={p.id}
+                label={patternLabel(p)}
+                active={boundPatternId === p.id}
+                onPress={() => setPatternId(p.id)}
+              />
+            ))}
+          </View>
+          {boundPatternId === null && <Text style={hint}>pick the class to cancel</Text>}
+        </View>
+      )}
 
       <View style={{ gap: 6 }}>
         <Text style={label}>DATE</Text>
@@ -86,6 +137,22 @@ function ExceptionForm({ courseId }: { courseId: string }) {
           accessibilityLabel="exception date"
         />
       </View>
+
+      {activeKind === 'one_off' && (
+        <>
+          <View style={{ flexDirection: 'row', gap: 16 }}>
+            <View style={{ gap: 6, flex: 1 }}>
+              <Text style={label}>START</Text>
+              <TimeField value={startTime} onChange={setStartTime} label="start" />
+            </View>
+            <View style={{ gap: 6, flex: 1 }}>
+              <Text style={label}>END</Text>
+              <TimeField value={endTime} onChange={setEndTime} label="end" />
+            </View>
+          </View>
+          <Text style={hint}>ends next day when the end is not after the start</Text>
+        </>
+      )}
 
       {error !== null && (
         <Text style={{ fontFamily: fontFamilies.mono, fontSize: 13, color: colors.danger }} accessibilityRole="alert">

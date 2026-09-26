@@ -1,5 +1,6 @@
 import { Alert } from 'react-native';
 import renderer, { act } from 'react-test-renderer';
+import { Pattern } from '@/db/schema';
 import ExceptionEditScreen from '../../../../app/exception-edit';
 
 jest.mock('expo-router', () => ({
@@ -70,6 +71,9 @@ const saveButton = (tree: renderer.ReactTestRenderer) => {
   return node;
 };
 
+const saveDisabled = (tree: renderer.ReactTestRenderer) =>
+  hostByLabel(tree, 'save exception').props.accessibilityState?.disabled === true;
+
 const chipByText = (tree: renderer.ReactTestRenderer, text: string) => {
   const [labelNode] = tree.root.findAllByProps({ children: text });
   if (labelNode === undefined) throw new Error(`no label "${text}"`);
@@ -79,21 +83,61 @@ const chipByText = (tree: renderer.ReactTestRenderer, text: string) => {
   return chip;
 };
 
+const press = async (node: renderer.ReactTestInstance, ...args: unknown[]) => {
+  await act(async () => {
+    (node.props.onPress as (...a: unknown[]) => void)(...args);
+  });
+};
+
+const setDate = async (tree: renderer.ReactTestRenderer, value: string) => {
+  await act(async () => {
+    hostByLabel(tree, 'exception date').props.onChangeText(value);
+  });
+};
+
+const setTimes = async (tree: renderer.ReactTestRenderer, start: string, end: string) => {
+  const [sh = '', sm = ''] = start.split(':');
+  const [eh = '', em = ''] = end.split(':');
+  await act(async () => { hostByLabel(tree, 'start hour').props.onChangeText(sh); });
+  await act(async () => { hostByLabel(tree, 'start minute').props.onChangeText(sm); });
+  await act(async () => { hostByLabel(tree, 'end hour').props.onChangeText(eh); });
+  await act(async () => { hostByLabel(tree, 'end minute').props.onChangeText(em); });
+};
+
+const pattern = (over: Partial<Pattern> = {}): Pattern =>
+  ({
+    id: 'p1',
+    courseId: 'c1',
+    weekday: 1,
+    startTime: '08:00',
+    endTime: '09:30',
+    location: null,
+    validFrom: null,
+    validTo: null,
+    updatedAt: new Date(),
+    ...over,
+  }) as Pattern;
+
 let saveException: jest.Mock;
+
+const givenStore = (over: Record<string, unknown> = {}) => {
+  scheduleStore.useSchedule.mockReturnValue({
+    patterns: [pattern()],
+    exceptions: [],
+    loaded: true,
+    refresh: jest.fn(),
+    saveException,
+    removeException: jest.fn(),
+    ...over,
+  });
+};
 
 beforeEach(() => {
   jest.clearAllMocks();
   jest.spyOn(Alert, 'alert').mockImplementation(() => {});
   expoRouter.useLocalSearchParams.mockReturnValue({ courseId: 'c1' });
   saveException = jest.fn().mockResolvedValue({ id: 'e1' });
-  scheduleStore.useSchedule.mockReturnValue({
-    patterns: [],
-    exceptions: [],
-    loaded: true,
-    refresh: jest.fn(),
-    saveException,
-    removeException: jest.fn(),
-  });
+  givenStore();
 });
 
 afterEach(() => {
@@ -104,55 +148,119 @@ it('disables SAVE until the date is a valid YYYY-MM-DD', async () => {
   const { tree } = await render();
   expect(hostByLabel(tree, 'save exception').props.accessibilityState).toEqual({ disabled: true });
 
-  await act(async () => {
-    hostByLabel(tree, 'exception date').props.onChangeText('2026-9-28');
-  });
-  expect(hostByLabel(tree, 'save exception').props.accessibilityState?.disabled).toBe(true);
+  await setDate(tree, '2026-9-28');
+  expect(saveDisabled(tree)).toBe(true);
 
-  await act(async () => {
-    hostByLabel(tree, 'exception date').props.onChangeText('2026-09-28');
-  });
-  expect(hostByLabel(tree, 'save exception').props.accessibilityState?.disabled).toBe(false);
+  await setDate(tree, '2026-09-28');
+  expect(saveDisabled(tree)).toBe(false);
 });
 
-it('saves a cancelled exception with the exact draft and closes', async () => {
+it('auto-binds the only pattern when saving a cancellation, without showing a picker', async () => {
   const { tree } = await render();
-  await act(async () => {
-    hostByLabel(tree, 'exception date').props.onChangeText('2026-10-02');
-  });
-  await act(async () => {
-    saveButton(tree).props.onPress();
-  });
+  expect(() => chipByText(tree, 'MON 08:00–09:30')).toThrow();
+
+  await setDate(tree, '2026-10-02');
+  expect(saveDisabled(tree)).toBe(false);
+  await press(saveButton(tree));
+
   expect(saveException).toHaveBeenCalledWith({
     courseId: 'c1',
     date: '2026-10-02',
     kind: 'cancelled',
+    patternId: 'p1',
   });
   expect(expoRouter.router.back).toHaveBeenCalledTimes(1);
 });
 
-it('maps the EXTRA chip to the one_off kind on save', async () => {
+it('requires an explicit pattern choice when the course has several, and hides the picker for EXTRA', async () => {
+  givenStore({
+    patterns: [
+      pattern(),
+      pattern({ id: 'p2', startTime: '09:00', endTime: '10:30' }),
+    ],
+  });
   const { tree } = await render();
-  await act(async () => {
-    hostByLabel(tree, 'exception date').props.onChangeText('2026-10-03');
-    chipByText(tree, 'EXTRA').props.onPress();
+  await setDate(tree, '2026-10-04');
+  expect(saveDisabled(tree)).toBe(true);
+
+  await press(chipByText(tree, 'EXTRA'));
+  expect(() => chipByText(tree, 'MON 09:00–10:30')).toThrow();
+  expect(saveDisabled(tree)).toBe(true);
+
+  await press(chipByText(tree, 'CANCELLED'));
+  expect(() => chipByText(tree, 'MON 09:00–10:30')).not.toThrow();
+  expect(saveDisabled(tree)).toBe(true);
+
+  await press(chipByText(tree, 'MON 09:00–10:30'));
+  expect(saveDisabled(tree)).toBe(false);
+  await press(saveButton(tree));
+  expect(saveException).toHaveBeenCalledWith({
+    courseId: 'c1',
+    date: '2026-10-04',
+    kind: 'cancelled',
+    patternId: 'p2',
   });
-  await act(async () => {
-    saveButton(tree).props.onPress();
+  expect(expoRouter.router.back).toHaveBeenCalledTimes(1);
+});
+
+it('hides CANCELLED when the course has no patterns and still saves an EXTRA', async () => {
+  givenStore({ patterns: [] });
+  const { tree, found } = await render();
+  expect(found).toContain('no class times to cancel yet');
+  expect(() => chipByText(tree, 'CANCELLED')).toThrow();
+
+  await setDate(tree, '2026-10-07');
+  expect(saveDisabled(tree)).toBe(true);
+  await setTimes(tree, '10:00', '11:00');
+  expect(saveDisabled(tree)).toBe(false);
+  await press(saveButton(tree));
+
+  expect(saveException).toHaveBeenCalledWith({
+    courseId: 'c1',
+    date: '2026-10-07',
+    kind: 'one_off',
+    startTime: '10:00',
+    endTime: '11:00',
   });
+  expect(expoRouter.router.back).toHaveBeenCalledTimes(1);
+});
+
+it('maps the EXTRA chip to one_off and gates SAVE on both times', async () => {
+  const { tree } = await render();
+  await press(chipByText(tree, 'EXTRA'));
+  await setDate(tree, '2026-10-03');
+  expect(saveDisabled(tree)).toBe(true);
+
+  await setTimes(tree, '14:00', '15:00');
+  expect(saveDisabled(tree)).toBe(false);
+  await press(saveButton(tree));
+
   expect(saveException).toHaveBeenCalledWith({
     courseId: 'c1',
     date: '2026-10-03',
     kind: 'one_off',
+    startTime: '14:00',
+    endTime: '15:00',
   });
   expect(expoRouter.router.back).toHaveBeenCalledTimes(1);
 });
 
+it('still gates SAVE when only one EXTRA time is filled', async () => {
+  const { tree } = await render();
+  await press(chipByText(tree, 'EXTRA'));
+  await setDate(tree, '2026-10-08');
+  await act(async () => { hostByLabel(tree, 'start hour').props.onChangeText('14'); });
+  await act(async () => { hostByLabel(tree, 'start minute').props.onChangeText('00'); });
+  expect(saveDisabled(tree)).toBe(true);
+  await act(async () => { hostByLabel(tree, 'end hour').props.onChangeText('15'); });
+  expect(saveDisabled(tree)).toBe(true);
+  await act(async () => { hostByLabel(tree, 'end minute').props.onChangeText('00'); });
+  expect(saveDisabled(tree)).toBe(false);
+});
+
 it('guards the save path: pressing SAVE with a malformed date persists nothing', async () => {
   const { tree } = await render();
-  await act(async () => {
-    saveButton(tree).props.onPress();
-  });
+  await press(saveButton(tree));
   const after = texts(tree.toJSON());
   expect(after).toContain('Date must be YYYY-MM-DD');
   expect(saveException).not.toHaveBeenCalled();
@@ -167,19 +275,15 @@ it('alerts on a duplicate course/date and stays on the modal', async () => {
     ),
   );
   const { tree } = await render();
-  await act(async () => {
-    hostByLabel(tree, 'exception date').props.onChangeText('2026-10-02');
-  });
-  await act(async () => {
-    saveButton(tree).props.onPress();
-  });
+  await setDate(tree, '2026-10-02');
+  await press(saveButton(tree));
   expect(Alert.alert).toHaveBeenCalledWith(
     'Duplicate date',
     'An exception already exists for that date.',
     [{ text: 'OK' }],
   );
   expect(expoRouter.router.back).not.toHaveBeenCalled();
-  expect(hostByLabel(tree, 'save exception').props.accessibilityState?.disabled).toBe(false);
+  expect(saveDisabled(tree)).toBe(false);
 });
 
 it('shows an empty state when courseId is missing', async () => {
