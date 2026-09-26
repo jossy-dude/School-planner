@@ -2508,15 +2508,18 @@ export interface GradeRow { score: number; maxScore: number; weightOverride: num
 export function validateScale(rows: ScaleRow[]): { ok: boolean; errors: string[] };
 export function sortScaleRows(rows: ScaleRow[]): ScaleRow[];
 export function courseFinalPct(grades: GradeRow[]): number | null;   // null when no grades
-export function pointsForPct(pct: number, scale: Scale): number;     // interpolate between bounds; below lowest min → points of lowest row (or 0 if minPct>0 floor?)
+export function pointsForPct(pct: number, scale: Scale): number;     // continuous piecewise-linear: band floor → ceiling row (see amended rules below); pct ≥ top min → top points; below lowest min → lowest row's points (clamped ≥ 0)
 export function computeGpa(courses: CourseInput[], scale: Scale, rounding: number): { gpa: number | null; totalCredits: number; includedCount: number };
 export function targetGpaNeeded(courses: CourseInput[], scale: Scale, target: number): number | null; // avg points needed on remaining (finalPct===null) credits
 export function neededOnFinal(input: { currentPct: number; finalWeight: number; targetPct: number }): { neededPct: number; band: 'safe' | 'borderline' | 'impossible' };
 ```
 Rules (from spec):
-- `validateScale`: errors for empty rows, duplicate letters, non-increasing `minPct` (rows must be strictly descending after sort), **gaps** between adjacent `minPct` bounds (next row's min must equal previous min exactly? No — gaps allowed only if next.minPct === prev.minPct is overlap; a gap = prev row occupies [min, next.min) naturally... ). Concrete rule: after sorting desc by minPct, require rows[i].minPct > rows[i+1].minPct (strict, catches duplicates/overlaps) and rows[last].minPct === 0 is NOT required but warn-free. Gap between bounds doesn't exist in this model because ranges are [min, +inf) chains — so the ONLY errors: empty, duplicate letters (case-insensitive), non-strict-descending minPct, negative points, minPct outside 0–100.
+- `validateScale`: **validates rows AS GIVEN** (caller sorts first via `sortScaleRows` — AMENDMENT: the earlier "sort then check" wording contradicted the pinned `[{A,90},{B,95}] → ok:false` test, and as-given validation is coherent with `sortScaleRows` being a separate exported helper). Errors (any → `{ok:false, errors:[...]}`): empty rows; duplicate letters (case-insensitive); `minPct` not STRICTLY descending as given (rows[i].minPct > rows[i+1].minPct); negative points; `minPct` outside 0–100 or non-finite. No gap errors (ranges are [min, next) chains), lowest row need not be 0.
 - `courseFinalPct`: weighted by each grade's `weightOverride ?? 1` proportion: `Σ(score/maxScore * w) / Σ(w)` × 100; empty → null; `maxScore === 0` grades skipped.
-- `pointsForPct`: find first row (desc) with `minPct <= pct`; interpolate linearly between this row and the next-lower row: `points = row.points + (pct - row.minPct) / (next.minPct - row.minPct) * (next.points - row.points)` when a next row exists and bounds differ, else `row.points`; below all rows → `last.points` clamped ≥ 0; pct ≥ top min → top points.
+- `pointsForPct`: rows sorted desc by minPct. (a) `pct >= rows[0].minPct` → `rows[0].points`. (b) else find first row `i` with `minPct <= pct` (the band FLOOR) and interpolate with the **next-HIGHER row `i-1`** (the band CEILING): `points = rows[i].points + (pct - rows[i].minPct) / (rows[i-1].minPct - rows[i].minPct) * (rows[i-1].points - rows[i].points)`; else if no row matches (pct below every minPct) → lowest row's points clamped ≥ 0. AMENDMENT: original said "next-lower row" — wrong direction (matched rows always have `pct >= row.minPct`, so a lower partner extrapolates and the mapping is discontinuous at band edges; the uniform-scale pinned tests can't distinguish, but non-uniform scales can). This makes the map continuous piecewise-linear: 0→0, band floors interpolate toward the row above (e. 85 → 3.5 between B@80 and A@90; 45 → 0.75 between F@0 and D@60).
+- `computeGpa`: include courses where `!excluded && finalPct !== null && credits > 0`; `gpa = Σ(points * credits) / Σ(credits)`; round with `rounding` decimals (0–3); no included → `{ gpa: null, totalCredits: 0, includedCount: 0 }`.
+- `targetGpaNeeded`: remaining = courses with `finalPct === null && !excluded && credits > 0`; done = included with pct; if no remaining → null; `needed = (target * (doneCredits + remCredits) - Σ(points*credits)_done) / remCredits` (points-space average).
+- `neededOnFinal`: `current = (currentPct * (1 - finalWeight) + needed * finalWeight)` → `needed = (targetPct - currentPct * (1 - finalWeight)) / finalWeight`; band: `needed <= 70 → safe`, `70 < needed <= 100 → borderline`, `> 100 → impossible`; `finalWeight` must be in (0, 1] — invalid → needed NaN guard returns `impossible` with neededPct 0? No: throw-free — return `{ neededPct: 0, band: 'impossible' }` only when weight ≤ 0.
 - `computeGpa`: include courses where `!excluded && finalPct !== null && credits > 0`; `gpa = Σ(points * credits) / Σ(credits)`; round with `rounding` decimals (0–3); no included → `{ gpa: null, totalCredits: 0, includedCount: 0 }`.
 - `targetGpaNeeded`: remaining = courses with `finalPct === null && !excluded && credits > 0`; done = included with pct; if no remaining → null; `needed = (target * (doneCredits + remCredits) - Σ(points*credits)_done) / remCredits` (points-space average).
 - `neededOnFinal`: `current = (currentPct * (1 - finalWeight) + needed * finalWeight)` → `needed = (targetPct - currentPct * (1 - finalWeight)) / finalWeight`; band: `needed <= 70 → safe`, `70 < needed <= 100 → borderline`, `> 100 → impossible`; `finalWeight` must be in (0, 1] — invalid → needed NaN guard returns `impossible` with neededPct 0? No: throw-free — return `{ neededPct: 0, band: 'impossible' }` only when weight ≤ 0.
@@ -2545,7 +2548,7 @@ it('validateScale catches duplicates, order, bounds', () => {
 });
 
 it('courseFinalPct weights by override and ignores empty', () => {
-  expect(courseFinalPct([{ score: 8, maxScore: 10, weightOverride: null }, { score: 18, maxScore: 20, weightOverride: null }])).toBeCloseTo(90);
+  expect(courseFinalPct([{ score: 8, maxScore: 10, weightOverride: null }, { score: 18, maxScore: 20, weightOverride: null }])).toBeCloseTo(85); // AMENDED: (0.8+0.9)/2 = 85 (was 90, contradicted the formula and the sibling assertion)
   expect(courseFinalPct([{ score: 50, maxScore: 100, weightOverride: 3 }, { score: 90, maxScore: 100, weightOverride: 1 }])).toBeCloseTo(60);
   expect(courseFinalPct([])).toBeNull();
 });
@@ -2553,8 +2556,8 @@ it('courseFinalPct weights by override and ignores empty', () => {
 it('pointsForPct interpolates between bounds', () => {
   expect(pointsForPct(95, scale)).toBeCloseTo(4);
   expect(pointsForPct(85, scale)).toBeCloseTo(3.5);
-  expect(pointsForPct(5, scale)).toBeCloseTo(0.5);
-  expect(pointsForPct(45, scale)).toBeCloseTo(0.5);
+  expect(pointsForPct(5, scale)).toBeCloseTo(5 / 60, 5);  // AMENDED: F-band interpolates toward D@60 → 5/60 ≈ 0.0833 (was 0.5 — unsatisfiable by any rule consistent with the other four assertions)
+  expect(pointsForPct(45, scale)).toBeCloseTo(0.75, 5);   // AMENDED: 45/60 = 0.75 (was 0.5 — same reason)
   expect(pointsForPct(0, scale)).toBeCloseTo(0);
 });
 
@@ -2564,7 +2567,7 @@ it('computeGpa credit-weights and excludes', () => {
     { id: '2', credits: 4, finalPct: 85, excluded: false },
     { id: '3', credits: 5, finalPct: 70, excluded: true },
   ], scale, 2);
-  expect(r.gpa).toBeCloseTo(3.54, 2); // (4*3 + 3.5*4) / 7
+  expect(r.gpa).toBeCloseTo(3.71, 2); // AMENDED: (4*3 + 3.5*4) / 7 = 3.714… (was 3.54 — contradicted its own comment/formula)
   expect(r.totalCredits).toBe(7);
   expect(r.includedCount).toBe(2);
 });
