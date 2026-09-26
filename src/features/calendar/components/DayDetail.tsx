@@ -42,14 +42,17 @@ export interface DayDetailProps {
 
 interface DetailRow {
   key: string;
-  time: string;
+  /** Clock slot for session/absence rows; event rows skip it for a T-minus chip. */
+  time?: string;
   emoji: string;
   title: string;
   courseId?: string | null;
   // Event rows (EXAMS/TASKS/CLUBS) carry their id + due time: they render a
-  // T-minus chip instead of the clock slot and open the edit modal on press.
+  // T-minus chip (or a DONE stamp when done) instead of the clock slot and
+  // open the edit modal on press.
   eventId?: string;
   dueAtMs?: number;
+  done?: boolean;
 }
 
 interface DetailSection {
@@ -158,19 +161,20 @@ export function DayDetail({
     const course = (id?: string | null) => (id ? courses.find((c) => c.id === id) : undefined);
     const out: DetailSection[] = [];
     // Event rows sort by dueAt and carry the kind glyph; at render they swap the
-    // clock slot for a T-minus chip, which is what makes them read as events.
+    // clock slot for a T-minus chip (or a DONE stamp), which is what makes them
+    // read as events rather than sessions.
     const eventRows = (pick: (e: DotEvent) => boolean, fallbackTitle: string): DetailRow[] =>
       events
         .filter(pick)
         .sort((a, b) => a.dueAtMs - b.dueAtMs)
         .map((e) => ({
           key: e.id,
-          time: hhmm(e.dueAtMs),
           emoji: KIND_GLYPHS[e.kind],
           title: e.title ?? fallbackTitle,
           courseId: e.courseId,
           eventId: e.id,
           dueAtMs: e.dueAtMs,
+          done: e.done,
         }));
     if (want('CLASSES')) {
       out.push({
@@ -292,7 +296,11 @@ export function DayDetail({
                         flexDirection: 'row', alignItems: 'center', gap: 10, opacity: pressed ? 0.6 : 1,
                       }]}
                     >
-                      <TMinusChip text={label} tone={label === 'OVERDUE' ? 'danger' : 'ink'} />
+                      {row.done ? (
+                        <Stamp text="DONE" />
+                      ) : (
+                        <TMinusChip text={label} tone={label === 'OVERDUE' ? 'danger' : 'ink'} />
+                      )}
                       <Text style={{ fontSize: 16 }}>{row.emoji}</Text>
                       <Text numberOfLines={1} style={{ flex: 1, fontFamily: fontFamilies.mono, fontSize: 13, color: colors.ink }}>
                         {row.title}
