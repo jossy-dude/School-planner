@@ -2407,9 +2407,9 @@ git commit -m "feat: attendance marking, stats, weekly gauge"
 ```ts
 export type EventKind = 'assignment' | 'test' | 'quiz' | 'club' | 'meeting' | 'other';
 export function validateEvent(input: { title?: string; dueAtMs?: number; kind?: EventKind }): { ok: boolean; error?: string };
-export function tMinusLabel(dueAtMs: number, nowMs: number): string; // "T-6D", "T-14H", "TODAY", "OVERDUE"
+export function tMinusLabel(dueAtMs: number, nowMs: number): string; // "T-6D", "T-14H", "T-30M", "OVERDUE"
 ```
-Rules: `tMinusLabel`: >7d → `T-<N>D` (ceil days); 7d≥x>1d → `T-<N>D`; 1d≥x>1h → `T-<N>H`; 1h≥x>0 → `T-<N>M`; x≤0 → `OVERDUE` (danger); same calendar day & future → `TODAY`.
+Rules: `tMinusLabel` (bands cover all x > 0; order: OVERDUE first, then magnitude bands): >7d → `T-<N>D` (ceil days); 7d≥x>1d → `T-<N>D` (ceil); 1d≥x>1h → `T-<N>H` (ceil); 1h≥x>0 → `T-<N>M` (ceil); x≤0 → `OVERDUE` (danger). NOTE (amendment): the original "same calendar day & future → TODAY" clause is removed — it conflicts with the pinned tests (a 5h/30m/90m deadline that falls on the same calendar day must return `T-5H`/`T-30M`/`T-2H`, not `TODAY`); tests win per the Task 9 precedent.
 - RN: store `useEventsStore` (list by date range, toggle done, CRUD); `EventForm` modal: KindChip row (6 kinds with glyphs `📝 assignment, 📝 test... glyphs: assignment 📋, test 📝, quiz ❓, club ⚑, meeting ◎, other •`), title input, description input (multiline), course picker (chips of courses + NONE), due date+time (TimeField + `YYYY-MM-DD` field), lead override chips (15/60/1440/null), SAVE/DELETE.
 - `TicketCard({ event, nowMs })` — BrutCard with `TMinusChip tMinusLabel(...)`, title, one-line description (`numberOfLines={2}`), course emoji chip, done checkbox (`Stamp text="DONE"` when done, tap toggles).
 
