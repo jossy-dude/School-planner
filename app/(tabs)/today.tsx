@@ -153,8 +153,9 @@ function PromisesSection() {
     void hydrateSettings().catch(() => {});
   }, [refreshCourses, hydrateSettings]);
 
-  // Refocus reloads promises + sessions and re-anchors the window clock
-  // (no interval: progress is minute-granular at best — disclosed).
+  // Refocus reloads promises + sessions and re-anchors the window clock; the
+  // 30s interval also repaints while this tab stays focused, so a timer that
+  // auto-finishes off-tab (or backgrounded) still updates the promise bars.
   const load = useCallback(async () => {
     await refreshPromises(week_start);
     setNowMs(Date.now());
@@ -163,6 +164,8 @@ function PromisesSection() {
   useFocusEffect(
     useCallback(() => {
       void load().catch(() => {});
+      const timer = setInterval(() => { void load().catch(() => {}); }, GAUGE_REFRESH_MS);
+      return () => clearInterval(timer);
     }, [load]),
   );
 

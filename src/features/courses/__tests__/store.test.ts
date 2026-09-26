@@ -9,11 +9,30 @@ jest.mock('../queries', () => ({
   removeCourse: jest.fn(),
 }));
 
+jest.mock('@/features/reminders/refresh', () => ({
+  refreshReminders: jest.fn().mockResolvedValue(undefined),
+}));
+
+// The real schedule store would fan out into its own queries — assert the seam
+// (that remove() reaches it) rather than the internals.
+jest.mock('@/features/schedule/store', () => {
+  const refresh = jest.fn().mockResolvedValue(undefined);
+  return { useScheduleStore: { getState: () => ({ refresh }) } };
+});
+
 const queries = jest.requireMock('../queries') as {
   listCourses: jest.Mock;
   insertCourse: jest.Mock;
   patchCourse: jest.Mock;
   removeCourse: jest.Mock;
+};
+
+const { refreshReminders } = jest.requireMock('@/features/reminders/refresh') as {
+  refreshReminders: jest.Mock;
+};
+
+const { useScheduleStore } = jest.requireMock('@/features/schedule/store') as {
+  useScheduleStore: { getState: () => { refresh: jest.Mock } };
 };
 
 const draft = {
@@ -34,6 +53,7 @@ it('refresh loads courses and marks loaded', async () => {
   const s = useCoursesStore.getState();
   expect(s.courses).toEqual([row]);
   expect(s.loaded).toBe(true);
+  expect(refreshReminders).toHaveBeenCalledTimes(1);
 });
 
 it('create inserts the draft, refreshes, and returns the row', async () => {
@@ -43,17 +63,24 @@ it('create inserts the draft, refreshes, and returns the row', async () => {
   expect(queries.listCourses).toHaveBeenCalled();
   expect(created).toEqual(row);
   expect(useCoursesStore.getState().courses).toEqual([row]);
+  // A course created with a lead override must reach the scheduler too.
+  expect(refreshReminders).toHaveBeenCalled();
 });
 
-it('update patches then refreshes', async () => {
+it('update patches then refreshes and reschedules reminders', async () => {
   await useCoursesStore.getState().update('c1', { name: 'Physics' });
   expect(queries.patchCourse).toHaveBeenCalledWith('c1', { name: 'Physics' });
   expect(queries.listCourses).toHaveBeenCalled();
+  // Course lead overrides feed reminder planning — every update funnels a refresh.
+  expect(refreshReminders).toHaveBeenCalled();
 });
 
-it('remove deletes then refreshes', async () => {
+it('remove deletes then refreshes, resyncs the schedule store, and reschedules reminders', async () => {
   await useCoursesStore.getState().remove('c1');
   expect(queries.removeCourse).toHaveBeenCalledWith('c1');
   expect(queries.listCourses).toHaveBeenCalled();
   expect(useCoursesStore.getState().courses).toEqual([row]);
+  // The DB cascades patterns/exceptions, so nothing else would resync them.
+  expect(useScheduleStore.getState().refresh).toHaveBeenCalled();
+  expect(refreshReminders).toHaveBeenCalled();
 });

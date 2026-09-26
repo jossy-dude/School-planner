@@ -17,6 +17,11 @@ jest.mock('@/features/settings/queries', () => ({
   writeSetting: jest.fn(),
 }));
 
+// Settings/courses writes funnel a reminder refresh — keep that chain out of here.
+jest.mock('@/features/reminders/refresh', () => ({
+  refreshReminders: jest.fn().mockResolvedValue(undefined),
+}));
+
 const queries = jest.requireMock('../queries') as {
   listAllGrades: jest.Mock;
   listTerms: jest.Mock;

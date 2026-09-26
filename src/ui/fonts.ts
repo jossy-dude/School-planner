@@ -26,7 +26,13 @@ export const FONTS = {
   DSEG14Classic: require('../../assets/fonts/DSEG14Classic-Regular.ttf'),
 } as const;
 
+export function fontsReady(loaded: boolean, error: Error | null): boolean {
+  // A load error must not block boot: fall back to system fonts instead of
+  // parking the app on the splash spinner forever.
+  return loaded || error !== null;
+}
+
 export function useFontsLoaded(): boolean {
-  const [loaded] = useFonts(FONTS);
-  return loaded;
+  const [loaded, error] = useFonts(FONTS);
+  return fontsReady(loaded, error);
 }

@@ -1,6 +1,6 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback } from 'react';
 import { FlatList, Pressable, Text, View } from 'react-native';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useCoursesStore } from '@/features/courses/store';
 import { PatternTile } from '@/features/courses/components/PatternTile';
 import { courseFolderLabel } from '@/features/courses/logic';
@@ -9,7 +9,9 @@ import { colors, fontFamilies, hardShadow, radius } from '@/ui/tokens';
 
 export default function CoursesScreen() {
   const { courses, refresh } = useCoursesStore();
-  useEffect(() => { refresh(); }, [refresh]);
+  // Same contract as the other tabs: refocus reloads (course edited/deleted
+  // behind a modal or another tab), not just first mount.
+  useFocusEffect(useCallback(() => { void refresh().catch(() => {}); }, [refresh]));
   const renderItem = useCallback(({ item }: { item: (typeof courses)[number] }) => (
     <Pressable onPress={() => router.push({ pathname: '/course/[id]', params: { id: item.id } })}
       style={{ marginBottom: 12, borderWidth: 2, borderColor: colors.ink, borderRadius: radius.md, backgroundColor: colors.paper2, overflow: 'hidden', ...hardShadow }}>

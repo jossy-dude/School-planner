@@ -88,12 +88,11 @@ export default function CalendarScreen() {
     return listAttendanceInRange(rangeIdStart, rangeIdEnd);
   }, [rangeIdStart, rangeIdEnd]);
 
-  const markAttendance = useCallback((courseId: string, date: string, status: AttendanceStatus) => {
-    void (async () => {
+  const markAttendance = useCallback((courseId: string, date: string, status: AttendanceStatus) =>
+    (async () => {
       await upsertAttendance(courseId, date, status);
       setMonthAttendance(await loadAttendance());
-    })().catch(() => {});
-  }, [loadAttendance]);
+    })(), [loadAttendance]);
 
   // Reloads when the visible range changes (month nav) and when focus returns
   // (e.g. after the event modal closes), so new event dots show up immediately.

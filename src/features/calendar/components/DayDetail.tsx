@@ -37,7 +37,7 @@ export interface DayDetailProps {
   attendance: { courseId: string; status: AttendanceStatus }[];
   filters: readonly CalendarFilter[];
   onClose: () => void;
-  onMarkAttendance?: (courseId: string, date: string, status: AttendanceStatus) => void;
+  onMarkAttendance?: (courseId: string, date: string, status: AttendanceStatus) => void | Promise<void>;
 }
 
 interface DetailRow {

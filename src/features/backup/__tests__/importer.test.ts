@@ -195,6 +195,30 @@ it('alerts when the picked file cannot be read as a zip', async () => {
   expect(db.transaction).not.toHaveBeenCalled();
 });
 
+it('rejects a picked file that does not end in .zip before reading it', async () => {
+  getDocumentAsync.mockResolvedValue({
+    canceled: false,
+    assets: [{ uri: 'file:///cache/notes.txt', name: 'notes.txt', lastModified: 0 }],
+  });
+
+  await importBackup();
+
+  expect(alertSpy).toHaveBeenCalledWith('Not a zip', expect.any(String));
+  expect(fileInstance.bytes).not.toHaveBeenCalled();
+  expect(db.transaction).not.toHaveBeenCalled();
+});
+
+it('accepts an uppercase .ZIP extension', async () => {
+  getDocumentAsync.mockResolvedValue({
+    canceled: false,
+    assets: [{ uri: 'file:///cache/BACKUP.ZIP', name: 'BACKUP.ZIP', lastModified: 0 }],
+  });
+
+  await importBackup();
+
+  expect(alertSpy).toHaveBeenCalledWith('Replace all data?', expect.any(String), expect.any(Array));
+});
+
 it('the confirm CANCEL button runs no transaction', async () => {
   await importBackup();
 

@@ -6,9 +6,17 @@ jest.mock('../queries', () => ({
   writeSetting: jest.fn(),
 }));
 
+jest.mock('@/features/reminders/refresh', () => ({
+  refreshReminders: jest.fn().mockResolvedValue(undefined),
+}));
+
 const queries = jest.requireMock('../queries') as {
   readAllSettings: jest.Mock;
   writeSetting: jest.Mock;
+};
+
+const { refreshReminders } = jest.requireMock('@/features/reminders/refresh') as {
+  refreshReminders: jest.Mock;
 };
 
 beforeEach(() => {
@@ -46,4 +54,19 @@ it('set writes through and hydrate re-reads stored values over defaults', async 
   expect(s.settings.week_start).toBe('sunday');
   expect(s.settings.reminder_lead_default_min).toBe(DEFAULT_SETTINGS.reminder_lead_default_min);
   expect(s.hydrated).toBe(true);
+});
+
+it('every settings write reschedules reminders; hydrating does not', async () => {
+  queries.writeSetting.mockResolvedValue(undefined);
+  queries.readAllSettings.mockResolvedValue({});
+
+  await useSettingsStore.getState().set('reminder_lead_default_min', 15);
+  expect(refreshReminders).toHaveBeenCalledTimes(1);
+
+  // Not key-matched: any write can change what the scheduler plans around.
+  await useSettingsStore.getState().set('week_start', 'sunday');
+  expect(refreshReminders).toHaveBeenCalledTimes(2);
+
+  await useSettingsStore.getState().hydrate();
+  expect(refreshReminders).toHaveBeenCalledTimes(2);
 });

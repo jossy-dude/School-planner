@@ -18,7 +18,7 @@ const TONES: Record<AttendanceStatus, 'ink' | 'danger' | 'ink70'> = {
 };
 
 export function AttendanceButtons({ value, onSelect, size = 24 }:
-  { value: AttendanceStatus | null; onSelect: (status: AttendanceStatus) => void; size?: number }) {
+  { value: AttendanceStatus | null; onSelect: (status: AttendanceStatus) => void | Promise<void>; size?: number }) {
   return (
     <View style={{ flexDirection: 'row', gap: 4 }}>
       {ATTENDANCE_STATUSES.map((status) => (
@@ -30,8 +30,11 @@ export function AttendanceButtons({ value, onSelect, size = 24 }:
           active={value === status}
           label={status}
           onPress={() => {
-            void Haptics.selectionAsync().catch(() => {});
-            onSelect(status);
+            // Feedback only after the write settles: a rejected write stays
+            // silent (the caller owns the failure) instead of buzzing "saved".
+            void Promise.resolve(onSelect(status))
+              .then(() => Haptics.selectionAsync())
+              .catch(() => {});
           }}
         />
       ))}

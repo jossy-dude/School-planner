@@ -16,6 +16,11 @@ jest.mock('../queries', () => ({
   upsertGpaScale: jest.fn(),
 }));
 
+// Settings/courses writes funnel a reminder refresh — keep that chain out of here.
+jest.mock('@/features/reminders/refresh', () => ({
+  refreshReminders: jest.fn().mockResolvedValue(undefined),
+}));
+
 const queries = jest.requireMock('../queries') as {
   listGpaScales: jest.Mock;
   upsertGpaScale: jest.Mock;

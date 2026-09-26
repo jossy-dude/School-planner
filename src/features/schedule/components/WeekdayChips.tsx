@@ -1,5 +1,6 @@
 import * as Haptics from 'expo-haptics';
 import { Pressable, Text, View } from 'react-native';
+import { useSettings } from '@/features/settings/store';
 import { colors, fontFamilies, radius } from '@/ui/tokens';
 
 const DAYS = [
@@ -13,9 +14,12 @@ const DAYS = [
 ] as const;
 
 export function WeekdayChips({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  const { week_start } = useSettings();
+  // The chip row leads with the same day the calendar's week leads with.
+  const days = week_start === 'sunday' ? DAYS : [...DAYS.slice(1), DAYS[0]];
   return (
     <View style={{ flexDirection: 'row', gap: 6 }}>
-      {DAYS.map((day) => {
+      {days.map((day) => {
         const active = value === day.weekday;
         return (
           <Pressable

@@ -86,13 +86,19 @@ function refreshAfterImport(): void {
 
 export async function importBackup(): Promise<void> {
   try {
+    // Android matches zip pickers poorly on MIME alone, so include the generic
+    // fallbacks and validate the extension below instead of trusting the filter.
     const picked = await DocumentPicker.getDocumentAsync({
-      type: 'application/zip',
+      type: ['application/zip', 'application/octet-stream', '*/*'],
       copyToCacheDirectory: true,
     });
     if (picked.canceled) return;
     const asset = picked.assets[0];
     if (!asset) return;
+    if (!/\.zip$/i.test(asset.name)) {
+      Alert.alert('Not a zip', 'Pick the .zip backup file exported by this app.');
+      return;
+    }
     const read = await readBackupZip(asset.uri);
     if (!read.ok) {
       if (read.reason === 'unreadable') {

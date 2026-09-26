@@ -7,6 +7,7 @@ import { migrateNow } from '@/db';
 import { refreshReminders } from '@/features/reminders/refresh';
 import { runAutoBackup } from '@/features/backup/auto';
 import { useFontsLoaded } from '@/ui/fonts';
+import { BootErrorScreen } from '@/ui/BootErrorScreen';
 import { GrainOverlay } from '@/ui/GrainOverlay';
 import { colors } from '@/ui/tokens';
 
@@ -17,18 +18,24 @@ let autoBackupChecked = false;
 export default function RootLayout() {
   const fontsLoaded = useFontsLoaded();
   const [ready, setReady] = useState(false);
+  const [migrateFailed, setMigrateFailed] = useState(false);
   useEffect(() => {
-    migrateNow().then(() => {
-      setReady(true);
-      // Setup + catch-up both run inside the serialized refresh chain.
-      refreshReminders().catch(() => {});
-      // Auto-backup is fire-and-forget: it never gates first paint.
-      if (!autoBackupChecked) {
-        autoBackupChecked = true;
-        runAutoBackup().catch(() => {});
-      }
-    });
+    migrateNow()
+      .then(() => {
+        setReady(true);
+        // Setup + catch-up both run inside the serialized refresh chain.
+        refreshReminders().catch(() => {});
+        // Auto-backup is fire-and-forget: it never gates first paint.
+        if (!autoBackupChecked) {
+          autoBackupChecked = true;
+          runAutoBackup().catch(() => {});
+        }
+      })
+      .catch(() => setMigrateFailed(true));
   }, []);
+  if (migrateFailed) {
+    return <BootErrorScreen />;
+  }
   if (!fontsLoaded || !ready) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', backgroundColor: colors.paper }}>

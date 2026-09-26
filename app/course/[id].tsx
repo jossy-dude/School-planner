@@ -27,6 +27,10 @@ const SECTIONS = [
   { key: 'attendance', glyph: '◌', title: 'ATTENDANCE' },
 ] as const;
 
+// Rendered-mark cap: the stats above always cover every row, but the list itself
+// is bounded so a long term can't produce an unbounded scroll.
+const MAX_MARKS_SHOWN = 30;
+
 function Stat({ label, value }: { label: string; value: number }) {
   return (
     <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4 }}>
@@ -57,7 +61,7 @@ function AttendancePanel({ rows }: { rows: Attendance[] }) {
         </View>
       </View>
       <View style={{ gap: 6 }}>
-        {recent.map((row) => {
+        {recent.slice(0, MAX_MARKS_SHOWN).map((row) => {
           const stamp = statusStamp(row.status);
           return (
             <View key={row.id} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -66,6 +70,11 @@ function AttendancePanel({ rows }: { rows: Attendance[] }) {
             </View>
           );
         })}
+        {recent.length > MAX_MARKS_SHOWN ? (
+          <Text style={{ fontFamily: fontFamilies.mono, fontSize: 11, color: colors.ink40 }}>
+            {`+${recent.length - MAX_MARKS_SHOWN} earlier`}
+          </Text>
+        ) : null}
       </View>
     </View>
   );

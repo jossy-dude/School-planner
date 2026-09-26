@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { refreshReminders } from '@/features/reminders/refresh';
 import { DEFAULT_SETTINGS, Settings } from './logic';
 import { readAllSettings, writeSetting } from './queries';
 
@@ -19,6 +20,9 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   set: async (key, value) => {
     set({ settings: { ...get().settings, [key]: value } });
     await writeSetting(key, value);
+    // Settings feed reminder planning (default lead) — funnel every write rather
+    // than key-matching, so a lead change reschedules notifications immediately.
+    void refreshReminders().catch(() => {});
   },
 }));
 
