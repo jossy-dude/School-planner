@@ -2836,8 +2836,8 @@ git commit -m "feat: study promises with tick-bar progress and mascot moment"
 - Produces (pure):
 ```ts
 export function sandboxFileName(original: string, taken: string[]): string; // dedupe: "report.pdf" → "report (2).pdf"
-export function formatFileSize(bytes: number): string; // "1.2 MB", "340 KB", "12 B"
-export function mimeGlyph(mime: string | null | undefined, name: string): string; // pdf 📄, image 🖼, else 📎
+export function formatFileSize(bytes: number): string; // "1.2 MB", "340 KB", "12 B" — AMENDED: unit ladder B (<1024) → KB (<1024²) → MB (<1024³) → GB; integer for B, otherwise 1 decimal with trailing ".0" stripped (340 KB not 340.0 KB); 1024 → "1 KB", 1048576 → "1 MB"
+export function mimeGlyph(mime: string | null | undefined, name?: string): string; // AMENDED: name optional (default '') so the pinned 1-arg call compiles — pdf 📄, image 🖼, else 📎; precedence: mime 'application/pdf' → 📄, mime 'image/*' → 🖼, else by extension (.pdf → 📄; png/jpg/jpeg/gif/webp/heic → 🖼), else 📎
 ```
 RN flow: `importFile(courseId, category)` → `DocumentPicker.getDocumentAsync({ copyToCacheDirectory: true, type: '*/*' })` → if not canceled: `new File(asset.uri).copy(new File(Paths.document, 'vault', sandboxFileName(name, taken)))` → insert `files` row (`sandboxUri` = dest.uri, size, mime = asset.mimeType).
 `openFile(file)` → `Sharing.isAvailableAsync()` then `Sharing.shareAsync(file.sandboxUri)` (share-sheet = open externally in Expo Go).
@@ -2865,6 +2865,17 @@ it('glyphs by mime then extension', () => {
 });
 ```
 Run FAIL → implement → PASS.
+
+> **ADJUDICATION (controller, pre-dispatch):**
+> 1. **Pinned-test signature defect fixed in the interface, not the test:** `mimeGlyph('application/pdf')` is a pinned 1-arg call but the original interface required `name: string` → would not compile. `name` is now optional (`name?`, default `''`); tests stay byte-verbatim.
+> 2. **Expo v57 API verified against https://docs.expo.dev/versions/v57.0.0/sdk/filesystem/ (controller):** `File`/`Directory`/`Paths` class API exists; `copy(dest)` returns `Promise<void>` (plan snippet's `await` is correct); `create({intermediates, idempotent})` valid on `Directory`; `list()` **throws if the directory does not exist** → ensure vault dir is created (Step 2) BEFORE listing taken names; `file.delete()` / `file.exists` sync. `expo-document-picker@~57.0.2`, `expo-file-system@~57.0.7`, `expo-sharing@~57.0.22` already in package.json (no new deps). Size: `asset.size ?? dest.size`.
+> 3. **`takenNames()` = vault directory listing** (disk is source of truth; DB may hold orphans). Union with DB names is unnecessary — import dedupe only needs disk collisions.
+> 4. **Step 4 device flow → substituted:** unit/component tests (mock `expo-document-picker` + `expo-file-system`: canceled path, dedupe integration, delete removes file then row) + bundle smoke. Literal restart-survival/share-sheet/delete-on-disk → Task 26 QA (ledger note).
+> 5. **`note-edit` modal does not exist yet** (Task 24 creates the route; only the Stack.Screen registration exists) → build a vault-local single-TextInput inline modal (new file authorized, e.g. `components/FileActionModal.tsx`, pattern from GradeForm/EventForm) for DESCRIBE/RENAME.
+> 6. **Navigation:** course folders → category sheet (4 categories + counts) → FileRow list; **ALL FILES folder → flat FileRow list directly** (no category sheet). vault.tsx internal view state (no new routes).
+> 7. **RENAME updates the DB display `name` only** (sandbox file keeps its disk name; `sandboxUri` unchanged) — disclose. **DELETE order: sandbox file first if `exists` (catch → Alert + abort, row untouched), then DB row** — both removed or neither; never a phantom row.
+> 8. **Open:** `Sharing.isAvailableAsync()` false → Alert fallback (disclose). Course FILES section import category: implementer's choice between default `'other'` and pre-pick via category sheet — disclose.
+> 9. Long-press actions DESCRIBE/RENAME/DELETE (plan's `Alert.prompt` is iOS-only → inline modal per plan). DESCRIBE sets/updates `description` (nullable); `Stamp` shows when `description` is set (text of implementer's choosing — disclose).
 
 - [ ] **Step 2: Sandbox copy flow** (exact API):
 ```ts
