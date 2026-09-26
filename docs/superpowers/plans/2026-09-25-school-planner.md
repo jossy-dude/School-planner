@@ -2935,6 +2935,16 @@ git commit -m "feat: course notes with kind stamps and descriptions"
 
 ### Task 25: Backup — ZIP export/import + auto-backup on open
 
+> **ADJUDICATION (controller, pre-dispatch):**
+> 1. **Pinned tests coherent — no amendments.** Edge tests to ADD: `parseBackupJson` with missing/non-object `tables` → null (prose validates "tables object"); `shouldAutoBackup` with `now < last` → false (natural `>=` fallout, pin it).
+> 2. **Pinned FK orders from the schema (14 tables) — importer must follow these exactly:** DELETE children-first: `grades → gradeCategories → scheduleExceptions → schedulePatterns → attendance → events → studySessions → studyPromises → files → notes → courses → terms → gpaScales → settings`. INSERT parents-first: `terms → courses → schedulePatterns → scheduleExceptions → gradeCategories → grades → attendance → events → studySessions → studyPromises → files → notes → gpaScales → settings`. (This satisfies the plan's "delete children first" + safe inserts regardless of whether `PRAGMA foreign_keys` is on.)
+> 3. **Zip→string via fflate `strFromU8`** — Hermes has no `TextDecoder`; do not use it. `zipSync` accepts string values directly.
+> 4. **Importer ignores unknown table keys** in payload (forward-compat; iterate only the 14 known tables in pinned order). Row-level insert failures reject the transaction → rollback → Alert with generic failure (no partial import — the transaction is the guarantee).
+> 5. **Settings keys exist** (`backup_interval_days` default 7, `backup_last_at` default null — `src/features/settings/logic.ts:8-9,19-20`) — read them via settings queries in the auto-backup hook; do NOT assume the zustand store is hydrated at root mount.
+> 6. **Auto-backup hook:** runs once after the migration gate in `app/_layout.tsx`, fire-and-forget `exportBackup({silent:true}).catch(()=>{})` (never blocks or crashes boot); silent path creates `backups/` dir idempotently; same-day file name overwrites (fine). First open with `last_at=null` → exports even when empty (pinned by test — accepted).
+> 7. **Step 5 "device round-trip (critical)" → substituted:** pure tests + importer/exporter tests with mocked `db`/native modules (transaction called; confirm-cancel path aborts without transaction; refreshes called after success) + bundle smoke. THE REAL ROUND-TRIP (export → wipe → import → everything restored) is the #1 item for Task 26 QA (ledger, flagged critical).
+> 8. Export: `Sharing.isAvailableAsync()` false → Alert fallback (consistent with Task 23 adjudication style — vault dropped but rule stands for backup).
+
 **Files:**
 - Create: `src/lib/backup/logic.ts`, `src/lib/backup/__tests__/backup.test.ts`
 - Create: `src/features/backup/exporter.ts`, `src/features/backup/importer.ts`
@@ -2980,11 +2990,11 @@ it('auto-backup interval logic', () => {
 Run FAIL → implement → PASS.
 
 - [ ] **Step 2: exporter** — gather tables, zip, write, share, stamp `backup_last_at`.
-- [ ] **Step 3: importer** — full flow with confirm + transaction + file restore + store refresh.
+- [ ] **Step 3: importer** — full flow with confirm + transaction (pinned FK orders) + store refresh (no file restore — Task 23 dropped).
 - [ ] **Step 4: settings + auto-backup wiring.**
 - [ ] **Step 5: Gates + device round-trip (critical)**
 
-Gates pass. Device: create courses + grades + files → EXPORT ZIP (share sheet opens) → DELETE all data (or reinstall app data via import into wiped state: import with confirm) → everything restored (courses, grades, settings, files openable).
+Gates pass. Device: create courses + grades + notes → EXPORT ZIP (share sheet opens) → import into a wiped state (confirm dialog) → everything restored (courses, grades, notes, settings). Real round-trip deferred to Task 26 QA (adjudication #7 — flagged CRITICAL).
 
 - [ ] **Step 6: Commit**
 ```bash
