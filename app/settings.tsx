@@ -1,6 +1,7 @@
 import { ReactNode, useEffect } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { router } from 'expo-router';
+import { ScaleEditor } from '@/features/gpa/components/ScaleEditor';
 import { BrutCard } from '@/ui/BrutCard';
 import { FilterChip, SegmentedChips, SquareIconButton } from '@/ui/primitives';
 import { colors, fontFamilies } from '@/ui/tokens';
@@ -91,7 +92,7 @@ export default function SettingsScreen() {
           <Row label="IMPORT"><Dash /></Row>
         </Section>
         <Section title="GPA">
-          <Row label="SCALE"><Dash /></Row>
+          <ScaleEditor />
         </Section>
       </ScrollView>
     </View>
