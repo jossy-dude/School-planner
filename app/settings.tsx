@@ -2,6 +2,9 @@ import { ReactNode, useEffect } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { ScaleEditor } from '@/features/gpa/components/ScaleEditor';
+import { exportBackup } from '@/features/backup/exporter';
+import { importBackup } from '@/features/backup/importer';
+import { toDateId } from '@/lib/schedule';
 import { BrutCard } from '@/ui/BrutCard';
 import { FilterChip, SegmentedChips, SquareIconButton } from '@/ui/primitives';
 import { colors, fontFamilies } from '@/ui/tokens';
@@ -41,10 +44,6 @@ function Stepper({ value, step, min, max, onChange }: {
       <SquareIconButton glyph="+" size={30} onPress={() => onChange(clamp(value + step, min, max))} />
     </View>
   );
-}
-
-function Dash() {
-  return <Text style={{ fontFamily: fontFamilies.lcd, fontSize: 18, color: colors.ink40 }}>—</Text>;
 }
 
 export default function SettingsScreen() {
@@ -88,8 +87,19 @@ export default function SettingsScreen() {
               ))}
             </View>
           </Row>
-          <Row label="EXPORT ZIP"><Dash /></Row>
-          <Row label="IMPORT"><Dash /></Row>
+          <Row label="EXPORT ZIP">
+            <SquareIconButton glyph="↓" size={30} label="export zip backup"
+              onPress={() => void exportBackup().then(hydrate).catch(() => {})} />
+          </Row>
+          <Row label="IMPORT">
+            <SquareIconButton glyph="↑" size={30} tone="danger" label="import backup"
+              onPress={() => void importBackup().catch(() => {})} />
+          </Row>
+          <Row label="LAST">
+            <Text style={{ fontFamily: fontFamilies.mono, fontSize: 13, color: colors.ink }}>
+              {settings.backup_last_at === null ? 'never' : toDateId(new Date(settings.backup_last_at))}
+            </Text>
+          </Row>
         </Section>
         <Section title="GPA">
           <ScaleEditor />

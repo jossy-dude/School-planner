@@ -5,9 +5,14 @@ import { ActivityIndicator, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { migrateNow } from '@/db';
 import { refreshReminders } from '@/features/reminders/refresh';
+import { runAutoBackup } from '@/features/backup/auto';
 import { useFontsLoaded } from '@/ui/fonts';
 import { GrainOverlay } from '@/ui/GrainOverlay';
 import { colors } from '@/ui/tokens';
+
+// Module-level one-shot: survives StrictMode's double-mounted effect in dev,
+// so a session can never silently export two zips.
+let autoBackupChecked = false;
 
 export default function RootLayout() {
   const fontsLoaded = useFontsLoaded();
@@ -17,6 +22,11 @@ export default function RootLayout() {
       setReady(true);
       // Setup + catch-up both run inside the serialized refresh chain.
       refreshReminders().catch(() => {});
+      // Auto-backup is fire-and-forget: it never gates first paint.
+      if (!autoBackupChecked) {
+        autoBackupChecked = true;
+        runAutoBackup().catch(() => {});
+      }
     });
   }, []);
   if (!fontsLoaded || !ready) {
