@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { LayoutChangeEvent } from 'react-native';
 import { ScrollView, Text, View } from 'react-native';
 import Animated, { useAnimatedRef } from 'react-native-reanimated';
+import { router, useFocusEffect } from 'expo-router';
 import type { Attendance } from '@/db/schema';
 import type { AttendanceStatus } from '@/features/attendance/logic';
 import { listAttendanceInRange, upsertAttendance } from '@/features/attendance/queries';
@@ -12,13 +13,13 @@ import type { CellFrame } from '@/features/calendar/components/DayCell';
 import { DayDetail } from '@/features/calendar/components/DayDetail';
 import type { CalendarFilter, DotEvent } from '@/features/calendar/dots';
 import { dayDotInfo, dayDots } from '@/features/calendar/dots';
-import { listEventsInRange } from '@/features/calendar/eventsQuery';
 import { paperTheme } from '@/features/calendar/theme';
 import { useCoursesStore } from '@/features/courses/store';
+import { listEventsInRange } from '@/features/events/queries';
 import { useScheduleStore } from '@/features/schedule/store';
 import { useSettings } from '@/features/settings/store';
 import { occurrencesOnDay } from '@/lib/schedule';
-import { FilterChip } from '@/ui/primitives';
+import { FilterChip, SquareIconButton } from '@/ui/primitives';
 import { colors, fontFamilies } from '@/ui/tokens';
 
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -94,27 +95,31 @@ export default function CalendarScreen() {
     })().catch(() => {});
   }, [loadAttendance]);
 
-  useEffect(() => {
-    if (rangeStart === null || rangeEnd === null) return;
-    let alive = true;
-    void (async () => {
-      const [ev, rows] = await Promise.all([
-        listEventsInRange(rangeStart, rangeEnd),
-        loadAttendance(),
-      ]);
-      if (!alive) return;
-      setMonthEvents(ev.map((e) => ({
-        id: e.id,
-        kind: e.kind,
-        done: e.done,
-        dueAtMs: e.dueAt.getTime(),
-        title: e.title,
-        courseId: e.courseId,
-      })));
-      setMonthAttendance(rows);
-    })();
-    return () => { alive = false; };
-  }, [rangeStart, rangeEnd, loadAttendance]);
+  // Reloads when the visible range changes (month nav) and when focus returns
+  // (e.g. after the event modal closes), so new event dots show up immediately.
+  useFocusEffect(
+    useCallback(() => {
+      if (rangeStart === null || rangeEnd === null) return;
+      let alive = true;
+      void (async () => {
+        const [ev, rows] = await Promise.all([
+          listEventsInRange(rangeStart, rangeEnd),
+          loadAttendance(),
+        ]);
+        if (!alive) return;
+        setMonthEvents(ev.map((e) => ({
+          id: e.id,
+          kind: e.kind,
+          done: e.done,
+          dueAtMs: e.dueAt.getTime(),
+          title: e.title,
+          courseId: e.courseId,
+        })));
+        setMonthAttendance(rows);
+      })();
+      return () => { alive = false; };
+    }, [rangeStart, rangeEnd, loadAttendance]),
+  );
 
   const eventsByDay = useMemo(() => {
     const m = new Map<string, DotEvent[]>();
@@ -186,9 +191,18 @@ export default function CalendarScreen() {
       onLayout={onRootLayout}
       style={{ flex: 1, backgroundColor: colors.paper, padding: 16 }}
     >
-      <Text style={{ fontFamily: fontFamilies.heading, fontSize: 18, color: colors.ink, marginBottom: 8 }}>
-        CALENDAR
-      </Text>
+      <View style={{
+        flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8,
+      }}>
+        <Text style={{ fontFamily: fontFamilies.heading, fontSize: 18, color: colors.ink }}>
+          CALENDAR
+        </Text>
+        <SquareIconButton
+          glyph="◆"
+          label="add event"
+          onPress={() => router.push({ pathname: '/event/[id]', params: { id: 'new', dueAt: selected } })}
+        />
+      </View>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}

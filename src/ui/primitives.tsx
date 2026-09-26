@@ -125,11 +125,12 @@ export function SquareIconButton({ glyph, onPress, tone = 'ink', size = 44, acti
   );
 }
 
-export function TMinusChip({ text }: { text: string }) {
+export function TMinusChip({ text, tone = 'ink' }: { text: string; tone?: 'ink' | 'danger' }) {
+  const color = tone === 'danger' ? colors.danger : colors.ink;
   return (
     <View style={{
-      backgroundColor: colors.ink, paddingHorizontal: 8, paddingVertical: 3,
-      borderRadius: radius.sm, borderWidth: 1.5, borderColor: colors.ink,
+      backgroundColor: color, paddingHorizontal: 8, paddingVertical: 3,
+      borderRadius: radius.sm, borderWidth: 1.5, borderColor: color,
     }}>
       <Text style={{ fontFamily: fontFamilies.lcd, fontSize: 13, color: colors.paper }}>
         {text}
