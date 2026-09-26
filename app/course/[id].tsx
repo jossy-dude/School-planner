@@ -1,13 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Alert, ScrollView, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Attendance, Pattern } from '@/db/schema';
+import { Attendance, Grade, GradeCategory, Pattern } from '@/db/schema';
 import { attendanceStats, statusStamp } from '@/features/attendance/logic';
 import { listAttendance } from '@/features/attendance/queries';
 import { CourseForm } from '@/features/courses/components/CourseForm';
 import { PatternTile } from '@/features/courses/components/PatternTile';
 import { courseFolderLabel } from '@/features/courses/logic';
 import { useCoursesStore } from '@/features/courses/store';
+import { CategoryChips } from '@/features/grades/components/CategoryChips';
+import { GradeListItem } from '@/features/grades/components/GradeRow';
+import { ScoreBar } from '@/features/grades/components/ScoreBar';
+import { useGrades } from '@/features/grades/store';
 import { PatternRow } from '@/features/schedule/components/PatternRow';
 import { useSchedule } from '@/features/schedule/store';
 import { EmptyState, SquareIconButton, Stamp } from '@/ui/primitives';
@@ -61,6 +65,81 @@ function AttendancePanel({ rows }: { rows: Attendance[] }) {
           );
         })}
       </View>
+    </View>
+  );
+}
+
+function GradesPanel({ courseId }: { courseId: string }) {
+  const { categories, grades, finalPct, loaded, refresh, addCategory, removeGrade, removeCategory } = useGrades(courseId);
+  useEffect(() => { void refresh(courseId); }, [refresh, courseId]);
+
+  const sorted = useMemo(() => [...grades].sort((a, b) => b.date.localeCompare(a.date)), [grades]);
+  const categoryById = useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories]);
+  const weightSum = categories.reduce((sum, c) => sum + c.weight, 0);
+  // Informational only — the engine never requires weights to sum to 100.
+  const showWeightStamp = categories.length > 0 && Math.round(weightSum) !== 100;
+
+  const confirmDeleteGrade = (g: Grade) => {
+    Alert.alert('Delete grade?', `${g.title} will be permanently removed.`, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: () => { void removeGrade(g.id); } },
+    ]);
+  };
+
+  const confirmDeleteCategory = (c: GradeCategory) => {
+    Alert.alert('Delete category?', `${c.name} will be removed. Grades keep their scores but lose the tag.`, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: () => { void removeCategory(c.id); } },
+    ]);
+  };
+
+  return (
+    <View style={{ gap: 8 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Text style={{ fontFamily: fontFamilies.heading, fontSize: 13, color: colors.ink70 }}>
+          Ⓦ GRADES
+        </Text>
+        <SquareIconButton
+          glyph="+"
+          size={32}
+          onPress={() => router.push({ pathname: '/grade/[id]', params: { id: 'new', courseId } })}
+        />
+      </View>
+
+      <View style={{ gap: 6 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4 }}>
+            <Text style={{ fontFamily: fontFamilies.lcd, fontSize: 40, color: colors.ink }}>
+              {finalPct === null ? '--' : finalPct.toFixed(1)}
+            </Text>
+            <Text style={{ fontFamily: fontFamilies.mono, fontSize: 14, color: colors.ink40 }}>%</Text>
+          </View>
+          {showWeightStamp && <Stamp text="WEIGHTS ≠100" tone="danger" />}
+        </View>
+        <ScoreBar value={(finalPct ?? 0) / 100} />
+      </View>
+
+      <CategoryChips
+        categories={categories}
+        onAdd={(draft) => { void addCategory(draft); }}
+        onLongPress={confirmDeleteCategory}
+      />
+
+      {sorted.length === 0 ? (
+        <EmptyState glyph="Ⓦ" label={loaded ? 'no grades yet' : 'loading…'} />
+      ) : (
+        <View style={{ gap: 8 }}>
+          {sorted.map((g) => (
+            <GradeListItem
+              key={g.id}
+              grade={g}
+              category={g.categoryId !== null ? categoryById.get(g.categoryId) : undefined}
+              onPress={() => router.push({ pathname: '/grade/[id]', params: { id: g.id, courseId } })}
+              onDelete={() => confirmDeleteGrade(g)}
+            />
+          ))}
+        </View>
+      )}
     </View>
   );
 }
@@ -201,6 +280,8 @@ export default function CourseScreen() {
             </View>
           )}
         </View>
+      ) : s.key === 'grades' ? (
+        <GradesPanel key={s.key} courseId={id} />
       ) : s.key === 'attendance' ? (
         <View key={s.key} style={{ gap: 8 }}>
           <Text style={{ fontFamily: fontFamilies.heading, fontSize: 13, color: colors.ink70 }}>
