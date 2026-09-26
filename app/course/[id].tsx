@@ -12,6 +12,8 @@ import { CategoryChips } from '@/features/grades/components/CategoryChips';
 import { GradeListItem } from '@/features/grades/components/GradeRow';
 import { ScoreBar } from '@/features/grades/components/ScoreBar';
 import { useGrades } from '@/features/grades/store';
+import { NoteList } from '@/features/notes/components/NoteList';
+import { useNotes } from '@/features/notes/store';
 import { PatternRow } from '@/features/schedule/components/PatternRow';
 import { useSchedule } from '@/features/schedule/store';
 import { EmptyState, SquareIconButton, Stamp } from '@/ui/primitives';
@@ -139,6 +141,32 @@ function GradesPanel({ courseId }: { courseId: string }) {
             />
           ))}
         </View>
+      )}
+    </View>
+  );
+}
+
+function NotesPanel({ courseId }: { courseId: string }) {
+  const { notes, loaded, refresh } = useNotes(courseId);
+  useEffect(() => { void refresh(courseId); }, [refresh, courseId]);
+
+  return (
+    <View style={{ gap: 8 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Text style={{ fontFamily: fontFamilies.heading, fontSize: 13, color: colors.ink70 }}>
+          ✎ NOTES
+        </Text>
+        <SquareIconButton
+          glyph="+"
+          size={32}
+          label="add note"
+          onPress={() => router.push({ pathname: '/note-edit', params: { id: 'new', courseId } })}
+        />
+      </View>
+      {notes.length === 0 ? (
+        <EmptyState glyph="✎" label={loaded ? 'no notes yet' : 'loading…'} />
+      ) : (
+        <NoteList notes={notes} courseId={courseId} />
       )}
     </View>
   );
@@ -289,6 +317,8 @@ export default function CourseScreen() {
           </Text>
           <AttendancePanel rows={attendanceRows} />
         </View>
+      ) : s.key === 'notes' ? (
+        <NotesPanel key={s.key} courseId={id} />
       ) : (
         <View key={s.key} style={{ gap: 4 }}>
           <Text style={{ fontFamily: fontFamilies.heading, fontSize: 13, color: colors.ink70 }}>
