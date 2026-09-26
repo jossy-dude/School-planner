@@ -3006,6 +3006,13 @@ git commit -m "feat: ZIP backup export/import with auto-backup on open"
 
 ### Task 26: Polish + full QA pass
 
+> **ADJUDICATION (controller, pre-dispatch):**
+> 1. **Step 4 device QA checklist cannot be executed here (no device/adb).** Substitution: (a) static verification pass over each of the 12 items — code evidence or existing tests where possible (e.g. notification scheduling = reminders tests, settings persistence = settings store tests, backup round-trip = importer/exporter order tests, timer→mascot = celebration tests); (b) bundle smoke; (c) the 12-item checklist is reproduced VERBATIM in the task report as a **user QA pass for Expo Go** (the established feedback loop: user tests → I fix). Record per-item status as `static-verified` / `covered-by-tests` / `user-check` — never claim a live run.
+> 2. **Empty-state copy list:** drop `"no files"` (Task 23 vault dropped). Vault tab keeps its coming-soon placeholder (do NOT convert it to EmptyState).
+> 3. **Motion audit:** grain overlay already `pointerEvents="none"` (GrainOverlay.tsx:18) — verify only. DayDetail morph uses `withSpring damping 24` (Task 14, already approved) — plan's "damping 20" value is SUPERSEDED: keep 24, do not churn. Tab-switch eyeball check → user QA.
+> 4. **Haptics adds (plan Step 2):** `selectionAsync` inside shared `FilterChip`/`SegmentedChips` primitives (one edit covers all chip call sites) + weekday chips IF they don't use those primitives + inline stepper +/- controls where locatable by grep (disclose skips); `impactAsync(Medium)` on timer start/pause; `notificationAsync(Success)` on backup export success (timer finish already shipped). All with `.catch(() => {})`.
+> 5. Step 5 fix pass: each fix keeps the pristine gate (`npx jest && npx tsc --noEmit && npx eslint .` 0 errors 0 warnings) + targeted retest.
+
 **Files:**
 - Modify: across `src/features/**` (empty states, haptics, copy), `app/(tabs)/*`
 
@@ -3013,13 +3020,13 @@ git commit -m "feat: ZIP backup export/import with auto-backup on open"
 - Consumes: everything.
 - Produces: consistent empty states on every screen, haptics on chip/stepper/timer events, motion audit, QA checklist executed and results reported.
 
-- [ ] **Step 1: Empty-state sweep** — every screen/section has `<EmptyState glyph label>` with mono lowercase copy (`"no courses yet — tap +"`, `"nothing due"`, `"no files"`, `"not marked yet"`, `"no promises — set one"`, `"no classes today"`, `"no grades"`).
+- [ ] **Step 1: Empty-state sweep** — every screen/section has `<EmptyState glyph label>` with mono lowercase copy (`"no courses yet — tap +"`, `"nothing due"`, `"not marked yet"`, `"no promises — set one"`, `"no classes today"`, `"no grades"`); vault keeps its coming-soon placeholder (not an EmptyState).
 
 - [ ] **Step 2: Haptics sweep** — `Haptics.selectionAsync()` on FilterChip/SegmentedChips/weekday chips/attendance buttons; `impactAsync(Medium)` on timer start/pause; `notificationAsync(Success)` on timer finish, backup export success.
 
-- [ ] **Step 3: Motion audit** — all presses use press-depth (BrutCard/SquareIconButton); DayDetail morph springy (`withSpring damping 20`); no layout jank: verify tab switch ≤ 16ms dropped frames by eye; grain overlay does not intercept touches (`pointerEvents="none"` — verify by tapping under it).
+- [ ] **Step 3: Motion audit** — all presses use press-depth (BrutCard/SquareIconButton); DayDetail morph springy (`withSpring damping 24` — Task 14 value, adjudication supersedes the earlier "20"); no layout jank: eyeball check deferred to user QA; grain overlay does not intercept touches (`pointerEvents="none"` — verify statically).
 
-- [ ] **Step 4: Full QA checklist (device, Expo Go)** — run and record results in the task report:
+- [ ] **Step 4: QA checklist (no device here — static-verify + tests, then hand verbatim checklist to user for Expo Go run, per adjudication #1; record `static-verified` / `covered-by-tests` / `user-check` per item in the task report)**
   1. Cold start → tabs, no red screens, migration ran (existing data intact).
   2. Courses: CRUD + emoji/color/pattern persistence.
   3. Schedule: pattern create/edit/delete; Today hero counts down; class goes active → tick bar → ends.
