@@ -85,9 +85,20 @@ const springPress = (press: SharedValue<number>, to: number) => {
   press.value = withSpring(to, { damping: 30, stiffness: 700 });
 };
 
-export function SquareIconButton({ glyph, onPress, tone = 'ink', size = 44 }:
-  { glyph: string; onPress: () => void; tone?: 'ink' | 'danger'; size?: number }) {
+type IconButtonTone = 'ink' | 'danger' | 'ink70';
+
+const TONE_COLORS: Record<IconButtonTone, string> = {
+  ink: colors.ink,
+  danger: colors.danger,
+  ink70: colors.ink70,
+};
+
+export function SquareIconButton({ glyph, onPress, tone = 'ink', size = 44, active = false, label }:
+  { glyph: string; onPress: () => void; tone?: IconButtonTone; size?: number; active?: boolean; label?: string }) {
   const press = useSharedValue(0);
+  const toneColor = TONE_COLORS[tone];
+  const background = active ? toneColor : colors.paper;
+  const foreground = active ? colors.paper : toneColor;
   const style = useAnimatedStyle(() => ({
     transform: [{ translateX: press.value }, { translateY: press.value }],
     shadowOpacity: 1 - press.value / 3,
@@ -97,13 +108,16 @@ export function SquareIconButton({ glyph, onPress, tone = 'ink', size = 44 }:
       onPress={onPress}
       onPressIn={() => springPress(press, 3)}
       onPressOut={() => springPress(press, 0)}
+      accessibilityRole="button"
+      accessibilityLabel={label ?? glyph}
+      accessibilityState={active ? { selected: true } : undefined}
     >
       <Animated.View style={[{
-        width: size, height: size, backgroundColor: colors.paper,
-        borderWidth: 2, borderColor: tone === 'danger' ? colors.danger : colors.ink,
+        width: size, height: size, backgroundColor: background,
+        borderWidth: 2, borderColor: toneColor,
         alignItems: 'center', justifyContent: 'center', ...hardShadow,
       }, style]}>
-        <Text style={{ fontSize: size * 0.45, color: tone === 'danger' ? colors.danger : colors.ink }}>
+        <Text style={{ fontSize: size * 0.45, color: foreground }}>
           {glyph}
         </Text>
       </Animated.View>

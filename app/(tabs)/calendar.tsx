@@ -5,12 +5,14 @@ import type { LayoutChangeEvent } from 'react-native';
 import { ScrollView, Text, View } from 'react-native';
 import Animated, { useAnimatedRef } from 'react-native-reanimated';
 import type { Attendance } from '@/db/schema';
+import type { AttendanceStatus } from '@/features/attendance/logic';
+import { listAttendanceInRange, upsertAttendance } from '@/features/attendance/queries';
 import { DayCell } from '@/features/calendar/components/DayCell';
 import type { CellFrame } from '@/features/calendar/components/DayCell';
 import { DayDetail } from '@/features/calendar/components/DayDetail';
 import type { CalendarFilter, DotEvent } from '@/features/calendar/dots';
 import { dayDotInfo, dayDots } from '@/features/calendar/dots';
-import { listAbsencesInRange, listEventsInRange } from '@/features/calendar/eventsQuery';
+import { listEventsInRange } from '@/features/calendar/eventsQuery';
 import { paperTheme } from '@/features/calendar/theme';
 import { useCoursesStore } from '@/features/courses/store';
 import { useScheduleStore } from '@/features/schedule/store';
@@ -33,7 +35,7 @@ export default function CalendarScreen() {
   const [detail, setDetail] = useState<{ dateId: string; frame: CellFrame | null } | null>(null);
   const [size, setSize] = useState({ width: 0, height: 0 });
   const [monthEvents, setMonthEvents] = useState<DotEvent[]>([]);
-  const [monthAbsences, setMonthAbsences] = useState<Attendance[]>([]);
+  const [monthAttendance, setMonthAttendance] = useState<Attendance[]>([]);
 
   const patterns = useScheduleStore((s) => s.patterns);
   const exceptions = useScheduleStore((s) => s.exceptions);
@@ -77,14 +79,28 @@ export default function CalendarScreen() {
   const gridEnd = lastWeek?.[lastWeek.length - 1]?.date ?? null;
   const rangeStart = gridStart?.getTime() ?? null;
   const rangeEnd = gridEnd ? gridEnd.getTime() + 86_400_000 : null;
+  const rangeIdStart = rangeStart === null ? null : toDateId(new Date(rangeStart));
+  const rangeIdEnd = rangeEnd === null ? null : toDateId(new Date(rangeEnd - 1));
+
+  const loadAttendance = useCallback(async (): Promise<Attendance[]> => {
+    if (rangeIdStart === null || rangeIdEnd === null) return [];
+    return listAttendanceInRange(rangeIdStart, rangeIdEnd);
+  }, [rangeIdStart, rangeIdEnd]);
+
+  const markAttendance = useCallback((courseId: string, date: string, status: AttendanceStatus) => {
+    void (async () => {
+      await upsertAttendance(courseId, date, status);
+      setMonthAttendance(await loadAttendance());
+    })().catch(() => {});
+  }, [loadAttendance]);
 
   useEffect(() => {
     if (rangeStart === null || rangeEnd === null) return;
     let alive = true;
     void (async () => {
-      const [ev, abs] = await Promise.all([
+      const [ev, rows] = await Promise.all([
         listEventsInRange(rangeStart, rangeEnd),
-        listAbsencesInRange(toDateId(new Date(rangeStart)), toDateId(new Date(rangeEnd - 1))),
+        loadAttendance(),
       ]);
       if (!alive) return;
       setMonthEvents(ev.map((e) => ({
@@ -95,10 +111,10 @@ export default function CalendarScreen() {
         title: e.title,
         courseId: e.courseId,
       })));
-      setMonthAbsences(abs);
+      setMonthAttendance(rows);
     })();
     return () => { alive = false; };
-  }, [rangeStart, rangeEnd]);
+  }, [rangeStart, rangeEnd, loadAttendance]);
 
   const eventsByDay = useMemo(() => {
     const m = new Map<string, DotEvent[]>();
@@ -111,15 +127,24 @@ export default function CalendarScreen() {
     return m;
   }, [monthEvents]);
 
-  const absencesByDay = useMemo(() => {
+  const attendanceByDay = useMemo(() => {
     const m = new Map<string, Attendance[]>();
-    for (const a of monthAbsences) {
+    for (const a of monthAttendance) {
       const list = m.get(a.date);
       if (list) list.push(a);
       else m.set(a.date, [a]);
     }
     return m;
-  }, [monthAbsences]);
+  }, [monthAttendance]);
+
+  const absencesByDay = useMemo(() => {
+    const m = new Map<string, Attendance[]>();
+    for (const [date, rows] of attendanceByDay) {
+      const absent = rows.filter((a) => a.status === 'absent');
+      if (absent.length > 0) m.set(date, absent);
+    }
+    return m;
+  }, [attendanceByDay]);
 
   const occOn = useCallback(
     (dateId: string) => occurrencesOnDay(patterns, exceptions, dateId),
@@ -240,8 +265,10 @@ export default function CalendarScreen() {
           occurrences={occOn(detail.dateId)}
           events={eventsByDay.get(detail.dateId) ?? []}
           absences={absencesByDay.get(detail.dateId) ?? []}
+          attendance={attendanceByDay.get(detail.dateId) ?? []}
           filters={filters}
           onClose={closeDetail}
+          onMarkAttendance={markAttendance}
         />
       ) : null}
     </Animated.View>

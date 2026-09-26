@@ -1,8 +1,11 @@
 import type { Course } from '@/db/schema';
+import type { AttendanceStatus } from '@/features/attendance/logic';
+import { statusStamp } from '@/features/attendance/logic';
+import { AttendanceButtons } from '@/features/attendance/components/AttendanceButtons';
 import type { CalendarFilter, DotEvent } from '@/features/calendar/dots';
 import type { Occurrence } from '@/lib/schedule';
-import { EmptyState, SquareIconButton } from '@/ui/primitives';
-import { colors, fontFamilies, hardShadow, radius } from '@/ui/tokens';
+import { EmptyState, SquareIconButton, Stamp } from '@/ui/primitives';
+import { colors, fontFamilies, hardShadow } from '@/ui/tokens';
 import { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import Animated, {
@@ -29,9 +32,10 @@ export interface DayDetailProps {
   occurrences: Occurrence[];
   events: DotEvent[];
   absences: { id: string; courseId: string | null }[];
+  attendance: { courseId: string; status: AttendanceStatus }[];
   filters: readonly CalendarFilter[];
   onClose: () => void;
-  onMarkAttendance?: (courseId: string) => void;
+  onMarkAttendance?: (courseId: string, date: string, status: AttendanceStatus) => void;
 }
 
 interface DetailRow {
@@ -69,6 +73,7 @@ export function DayDetail({
   occurrences,
   events,
   absences,
+  attendance,
   filters,
   onClose,
   onMarkAttendance,
@@ -127,6 +132,12 @@ export function DayDetail({
     opacity: alpha.value,
   }));
   const backdropStyle = useAnimatedStyle(() => ({ opacity: backdrop.value }));
+
+  const statusByCourse = useMemo(() => {
+    const m = new Map<string, AttendanceStatus>();
+    for (const row of attendance) m.set(row.courseId, row.status);
+    return m;
+  }, [attendance]);
 
   const sections = useMemo<DetailSection[]>(() => {
     const all = filters.length === 0;
@@ -250,25 +261,28 @@ export function DayDetail({
               </View>
               {sec.rows.map((row) => {
                 const courseId = row.courseId;
+                const markable = sec.key === 'CLASSES' && !!courseId && !!onMarkAttendance;
+                const status = markable && courseId ? statusByCourse.get(courseId) : undefined;
+                const stamp = status ? statusStamp(status) : null;
                 return (
-                  <View key={row.key} style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                    <Text style={{ fontFamily: fontFamilies.lcd, fontSize: 15, color: colors.ink, width: 48 }}>
-                      {row.time}
-                    </Text>
-                    <Text style={{ fontSize: 16 }}>{row.emoji}</Text>
-                    <Text numberOfLines={1} style={{ flex: 1, fontFamily: fontFamilies.mono, fontSize: 13, color: colors.ink }}>
-                      {row.title}
-                    </Text>
-                    {onMarkAttendance && sec.key === 'CLASSES' && courseId ? (
-                      <Pressable
-                        onPress={() => onMarkAttendance(courseId)}
-                        style={{
-                          borderWidth: 1.5, borderColor: colors.ink, borderRadius: radius.pill,
-                          paddingHorizontal: 8, paddingVertical: 3, backgroundColor: colors.paper2,
-                        }}
-                      >
-                        <Text style={{ fontFamily: fontFamilies.mono, fontSize: 10, color: colors.ink }}>MARK</Text>
-                      </Pressable>
+                  <View key={row.key} style={{ gap: 4 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                      <Text style={{ fontFamily: fontFamilies.lcd, fontSize: 15, color: colors.ink, width: 48 }}>
+                        {row.time}
+                      </Text>
+                      <Text style={{ fontSize: 16 }}>{row.emoji}</Text>
+                      <Text numberOfLines={1} style={{ flex: 1, fontFamily: fontFamilies.mono, fontSize: 13, color: colors.ink }}>
+                        {row.title}
+                      </Text>
+                    </View>
+                    {markable && courseId && onMarkAttendance ? (
+                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 8 }}>
+                        {stamp ? <Stamp text={stamp.text} tone={stamp.tone} /> : null}
+                        <AttendanceButtons
+                          value={status ?? null}
+                          onSelect={(next) => onMarkAttendance(courseId, dateId, next)}
+                        />
+                      </View>
                     ) : null}
                   </View>
                 );

@@ -1,7 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Alert, ScrollView, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Pattern } from '@/db/schema';
+import { Attendance, Pattern } from '@/db/schema';
+import { attendanceStats, statusStamp } from '@/features/attendance/logic';
+import { listAttendance } from '@/features/attendance/queries';
 import { CourseForm } from '@/features/courses/components/CourseForm';
 import { PatternTile } from '@/features/courses/components/PatternTile';
 import { courseFolderLabel } from '@/features/courses/logic';
@@ -19,13 +21,66 @@ const SECTIONS = [
   { key: 'attendance', glyph: '◌', title: 'ATTENDANCE' },
 ] as const;
 
+function Stat({ label, value }: { label: string; value: number }) {
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4 }}>
+      <Text style={{ fontFamily: fontFamilies.mono, fontSize: 11, color: colors.ink40 }}>{label}</Text>
+      <Text style={{ fontFamily: fontFamilies.lcd, fontSize: 16, color: colors.ink }}>{value}</Text>
+    </View>
+  );
+}
+
+function AttendancePanel({ rows }: { rows: Attendance[] }) {
+  const stats = useMemo(() => attendanceStats(rows), [rows]);
+  const recent = useMemo(() => [...rows].sort((a, b) => b.date.localeCompare(a.date)), [rows]);
+  if (rows.length === 0) return <EmptyState glyph="◌" label="not marked yet" />;
+  return (
+    <View style={{ gap: 10 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        <View style={{ flexDirection: 'row', gap: 14 }}>
+          <Stat label="P" value={stats.present} />
+          <Stat label="A" value={stats.absent} />
+          <Stat label="L" value={stats.late} />
+          <Stat label="E" value={stats.excused} />
+        </View>
+        <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 2 }}>
+          <Text style={{ fontFamily: fontFamilies.lcd, fontSize: 22, color: colors.ink }}>
+            {Math.round(stats.rate * 100)}
+          </Text>
+          <Text style={{ fontFamily: fontFamilies.mono, fontSize: 13, color: colors.ink40 }}>%</Text>
+        </View>
+      </View>
+      <View style={{ gap: 6 }}>
+        {recent.map((row) => {
+          const stamp = statusStamp(row.status);
+          return (
+            <View key={row.id} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Text style={{ fontFamily: fontFamilies.lcd, fontSize: 14, color: colors.ink70 }}>{row.date}</Text>
+              <Stamp text={stamp.text} tone={stamp.tone} />
+            </View>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
 export default function CourseScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { courses, loaded, refresh, remove } = useCoursesStore();
   const { patterns, exceptions, refresh: refreshSchedule, removePattern } = useSchedule(id);
   const [editing, setEditing] = useState(false);
+  const [attendanceRows, setAttendanceRows] = useState<Attendance[]>([]);
   useEffect(() => { refresh(); }, [refresh]);
   useEffect(() => { refreshSchedule(); }, [refreshSchedule]);
+  useEffect(() => {
+    if (id === 'new') return;
+    let alive = true;
+    void listAttendance(id)
+      .then((rows) => { if (alive) setAttendanceRows(rows); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [id]);
 
   if (id === 'new') return <CourseForm mode="create" />;
 
@@ -145,6 +200,13 @@ export default function CourseScreen() {
               )}
             </View>
           )}
+        </View>
+      ) : s.key === 'attendance' ? (
+        <View key={s.key} style={{ gap: 8 }}>
+          <Text style={{ fontFamily: fontFamilies.heading, fontSize: 13, color: colors.ink70 }}>
+            {s.glyph} {s.title}
+          </Text>
+          <AttendancePanel rows={attendanceRows} />
         </View>
       ) : (
         <View key={s.key} style={{ gap: 4 }}>
