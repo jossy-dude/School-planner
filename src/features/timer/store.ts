@@ -24,6 +24,13 @@ interface TimerActions {
   // Idle selection: chips/picker write here so the arc previews the next session.
   select: (courseId: string | null) => void;
   setDuration: (targetMs: number) => void;
+  dismissCelebration: () => void;
+}
+
+export interface Celebration {
+  minutes: number;
+  /** true = countdown auto-finished; false = manual ■ finish that logged a row. */
+  auto: boolean;
 }
 
 interface TimerStore {
@@ -32,6 +39,7 @@ interface TimerStore {
   sessions: StudySession[];
   sessionStartMs: number | null;
   finishing: boolean;
+  celebration: Celebration | null;
   actions: TimerActions;
 }
 
@@ -51,14 +59,16 @@ export const useTimerStore = create<TimerStore>((set, get) => ({
   sessions: [],
   sessionStartMs: null,
   finishing: false,
+  celebration: null,
   actions: {
     start: (courseId, targetMs) => {
       const now = Date.now();
-      set({ state: startState(courseId, targetMs, now), nowMs: now, sessionStartMs: now });
+      set({ state: startState(courseId, targetMs, now), nowMs: now, sessionStartMs: now, celebration: null });
     },
     pause: () => set({ state: pauseState(get().state, Date.now()), nowMs: Date.now() }),
     resume: () => set({ state: resumeState(get().state, Date.now()), nowMs: Date.now() }),
-    reset: () => set({ state: resetState(get().state), sessionStartMs: null, nowMs: Date.now() }),
+    reset: () => set({ state: resetState(get().state), sessionStartMs: null, nowMs: Date.now(), celebration: null }),
+    dismissCelebration: () => set({ celebration: null }),
     select: (courseId) => {
       if (get().state.status !== 'idle') return;
       set({ state: { ...get().state, courseId } });
@@ -75,11 +85,19 @@ export const useTimerStore = create<TimerStore>((set, get) => ({
       const now = Date.now();
       const startedAtMs = get().sessionStartMs ?? now - elapsedMs(s, now);
       const elapsed = elapsedMs(s, now);
-      set({ state: resetState(s), sessionStartMs: null, nowMs: now });
       // Gate on the wall-clock minute BEFORE rounding, so a 45s press
-      // (round → 1) never becomes a phantom 1-minute row.
-      if (elapsed >= 60_000) {
-        await logSession(s.courseId, startedAtMs, Math.max(1, Math.round(elapsed / 60_000)));
+      // (round → 1) never becomes a phantom 1-minute row — and only a logged
+      // row earns the mascot moment (manual < 60 s → celebration stays null).
+      const logged = elapsed >= 60_000;
+      const minutes = Math.max(1, Math.round(elapsed / 60_000));
+      set({
+        state: resetState(s),
+        sessionStartMs: null,
+        nowMs: now,
+        celebration: logged ? { minutes, auto: false } : null,
+      });
+      if (logged) {
+        await logSession(s.courseId, startedAtMs, minutes);
         await get().actions.refreshSessions();
       }
       set({ finishing: false });
@@ -92,12 +110,18 @@ export const useTimerStore = create<TimerStore>((set, get) => ({
       set({ state: next });
       if (!finished(next, nowMs)) return;
       // Countdown hit zero: persist the full target, celebrate, then re-arm.
-      // Task 22: mascot moment hook lands on this completion path.
       set({ finishing: true });
       const startedAtMs = get().sessionStartMs ?? nowMs;
-      await logSession(next.courseId, startedAtMs, Math.round(next.targetMs / 60_000));
+      const minutes = Math.round(next.targetMs / 60_000);
+      await logSession(next.courseId, startedAtMs, minutes);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-      set({ state: resetState(next), sessionStartMs: null, finishing: false, nowMs });
+      set({
+        state: resetState(next),
+        sessionStartMs: null,
+        finishing: false,
+        nowMs,
+        celebration: { minutes, auto: true },
+      });
       await get().actions.refreshSessions();
     },
     refreshSessions: async () => {

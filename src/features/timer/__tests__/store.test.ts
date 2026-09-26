@@ -28,6 +28,7 @@ const initial = {
   nowMs: 0,
   sessionStartMs: null as number | null,
   finishing: false,
+  celebration: null as { minutes: number; auto: boolean } | null,
   sessions: [] as StudySession[],
 };
 
@@ -102,7 +103,7 @@ it('manual finish logs rounded elapsed when it is at least a minute', async () =
   actions().tick(T0 + 25 * MIN);
   await actions().finish();
   expect(queries.insertSession).toHaveBeenCalledWith('c1', new Date(T0), 25);
-  expect(Haptics.notificationAsync).not.toHaveBeenCalled(); // mascot/haptic chain is auto-finish only (Task 22)
+  expect(Haptics.notificationAsync).not.toHaveBeenCalled(); // haptics stay auto-finish only; manual ≥60s celebrates via `celebration` (Task 22)
   expect(store().state.status).toBe('idle');
   expect(store().state.remainingMs).toBe(60 * MIN);
 });
@@ -145,4 +146,40 @@ it('select and setDuration update the idle preview state', () => {
   expect(store().state.courseId).toBe('c2');
   expect(store().state.targetMs).toBe(60 * MIN);
   expect(store().state.remainingMs).toBe(60 * MIN);
+});
+
+it('auto-finish celebrates with the full target minutes and auto flag', async () => {
+  actions().start('c1', 60 * MIN);
+  await actions().tick(T0 + 60 * MIN);
+  expect(store().celebration).toEqual({ minutes: 60, auto: true });
+});
+
+it('manual finish at least a minute celebrates in manual mode with rounded minutes', async () => {
+  actions().start('c1', 60 * MIN);
+  actions().tick(T0 + 90_000);
+  await actions().finish();
+  expect(store().celebration).toEqual({ minutes: 2, auto: false });
+});
+
+it('manual finish under a minute leaves the celebration null', async () => {
+  actions().start('c1', 60 * MIN);
+  actions().tick(T0 + 45_000);
+  await actions().finish();
+  expect(store().celebration).toBeNull();
+});
+
+it('dismiss and restart clear an undismissed celebration', async () => {
+  actions().start('c1', 60 * MIN);
+  await actions().tick(T0 + 60 * MIN);
+  expect(store().celebration).toEqual({ minutes: 60, auto: true });
+  actions().dismissCelebration();
+  expect(store().celebration).toBeNull();
+  await actions().tick(T0 + 60 * MIN);
+  expect(store().celebration).toBeNull(); // idle: no auto path
+  actions().start('c1', 45 * MIN);
+  expect(store().celebration).toBeNull();
+  await actions().tick(T0 + 45 * MIN);
+  expect(store().celebration).toEqual({ minutes: 45, auto: true });
+  actions().reset();
+  expect(store().celebration).toBeNull();
 });
