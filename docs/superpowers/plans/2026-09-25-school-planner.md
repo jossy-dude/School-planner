@@ -2906,6 +2906,8 @@ git commit -m "feat: file vault with sandbox copy, folders, file actions"
 
 ### Task 24: Notes (teacher said / exam tips)
 
+> **ADJUDICATION (controller, pre-dispatch):** `app/note-edit.tsx` does not exist yet (only the `Stack.Screen name="note-edit"` registration at `app/_layout.tsx:42`) → CREATE it as a modal route (pattern: `app/grade/[id].tsx`, params `id` + `courseId`; `id === 'new'` = create mode). `validateNote` lives in NEW pure module `src/features/notes/logic.ts` + tests (authorized file; RN-free, mirrors `grades/logic.ts`). List order: `updatedAt` desc (table has no createdAt). Exactly ONE `+` control in the NOTES section (Task 19's duplicate-`+` defect — do not repeat). DELETE hidden/guarded when `id === 'new'`. Step 4 device flow → substituted: store/component tests + bundle smoke; real persistence check → Task 26 QA. EmptyState label text is yours — disclose.
+
 **Files:**
 - Create: `src/features/notes/queries.ts`, `src/features/notes/store.ts`
 - Create: `src/features/notes/components/NoteList.tsx`
