@@ -13,7 +13,7 @@
     "@expo-google-fonts/share-tech-mono": "^0.4.1",
     "@expo-google-fonts/vt323": "^0.4.1",
     "@marceloterreiro/flash-calendar": "^2.0.0",
-    "@shopify/flash-list": "^2.3.2",
+    "@shopify/flash-list": "2.0.2",
     "@shopify/react-native-skia": "2.6.2",
     "drizzle-orm": "^0.45.3",
     "expo": "~57.0.25",
