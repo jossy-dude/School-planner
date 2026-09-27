@@ -155,17 +155,26 @@ it('disables SAVE until the date is a valid YYYY-MM-DD', async () => {
   expect(saveDisabled(tree)).toBe(false);
 });
 
+it('disables SAVE when a cancellation date is not the pattern weekday', async () => {
+  const { tree } = await render();
+  await setDate(tree, '2026-09-30');
+  expect(saveDisabled(tree)).toBe(true);
+
+  await setDate(tree, '2026-09-28');
+  expect(saveDisabled(tree)).toBe(false);
+});
+
 it('auto-binds the only pattern when saving a cancellation, without showing a picker', async () => {
   const { tree } = await render();
   expect(() => chipByText(tree, 'MON 08:00–09:30')).toThrow();
 
-  await setDate(tree, '2026-10-02');
+  await setDate(tree, '2026-10-05');
   expect(saveDisabled(tree)).toBe(false);
   await press(saveButton(tree));
 
   expect(saveException).toHaveBeenCalledWith({
     courseId: 'c1',
-    date: '2026-10-02',
+    date: '2026-10-05',
     kind: 'cancelled',
     patternId: 'p1',
   });
@@ -180,7 +189,7 @@ it('requires an explicit pattern choice when the course has several, and hides t
     ],
   });
   const { tree } = await render();
-  await setDate(tree, '2026-10-04');
+  await setDate(tree, '2026-10-05');
   expect(saveDisabled(tree)).toBe(true);
 
   await press(chipByText(tree, 'EXTRA'));
@@ -196,7 +205,7 @@ it('requires an explicit pattern choice when the course has several, and hides t
   await press(saveButton(tree));
   expect(saveException).toHaveBeenCalledWith({
     courseId: 'c1',
-    date: '2026-10-04',
+    date: '2026-10-05',
     kind: 'cancelled',
     patternId: 'p2',
   });
@@ -275,7 +284,7 @@ it('alerts on a duplicate course/date and stays on the modal', async () => {
     ),
   );
   const { tree } = await render();
-  await setDate(tree, '2026-10-02');
+  await setDate(tree, '2026-10-05');
   await press(saveButton(tree));
   expect(Alert.alert).toHaveBeenCalledWith(
     'Duplicate date',

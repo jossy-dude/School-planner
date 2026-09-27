@@ -84,6 +84,17 @@ it('does not stamp backup_last_at when the zip write throws', async () => {
   expect(Alert.alert).toHaveBeenCalledWith('Export failed', expect.any(String));
 });
 
+it('still exports when stamping backup_last_at fails', async () => {
+  writeSetting.mockRejectedValueOnce(new Error('db locked'));
+
+  await expect(exportBackup()).resolves.toBeUndefined();
+
+  expect(fileInstance.write).toHaveBeenCalled();
+  expect(Haptics.notificationAsync).toHaveBeenCalledWith(Haptics.NotificationFeedbackType.Success);
+  expect(sharing.shareAsync).toHaveBeenCalledWith(fileInstance.uri, { mimeType: 'application/zip' });
+  expect(Alert.alert).not.toHaveBeenCalled();
+});
+
 it('silent export writes and stamps without ever touching the share sheet', async () => {
   await exportBackup({ silent: true });
 

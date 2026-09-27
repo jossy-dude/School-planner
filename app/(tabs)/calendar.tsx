@@ -217,19 +217,19 @@ export default function CalendarScreen() {
         />
         <FilterChip
           label="EXAMS"
-          count={selectedInfo.hasExam ? 1 : 0}
+          count={selectedInfo.examCount}
           active={filters.includes('EXAMS')}
           onPress={() => toggleFilter('EXAMS')}
         />
         <FilterChip
           label="TASKS"
-          count={selectedInfo.hasTask ? 1 : 0}
+          count={selectedInfo.taskCount}
           active={filters.includes('TASKS')}
           onPress={() => toggleFilter('TASKS')}
         />
         <FilterChip
           label="CLUBS"
-          count={selectedInfo.hasClub ? 1 : 0}
+          count={selectedInfo.clubCount}
           active={filters.includes('CLUBS')}
           onPress={() => toggleFilter('CLUBS')}
         />

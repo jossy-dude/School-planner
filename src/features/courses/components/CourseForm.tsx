@@ -52,8 +52,9 @@ function Stepper({ value, onChange, min, step, suffix }:
   );
 }
 
-export function CourseForm({ mode, course }: { mode: 'create' | 'edit'; course?: Course }) {
+export function CourseForm({ mode, course, onDone }: { mode: 'create' | 'edit'; course?: Course; onDone?: () => void }) {
   const { create, update } = useCoursesStore();
+  const dismiss = onDone ?? (() => router.back());
   const [name, setName] = useState(course?.name ?? '');
   const [code, setCode] = useState(course?.code ?? '');
   const [emoji, setEmoji] = useState(course?.emoji ?? '📘');
@@ -77,7 +78,7 @@ export function CourseForm({ mode, course }: { mode: 'create' | 'edit'; course?:
       if (mode === 'create') await create(r.value);
       else if (course) await update(course.id, r.value);
       else { setError('Course not found'); setBusy(false); return; }
-      router.back();
+      dismiss();
     } catch {
       setError('Could not save course');
       setBusy(false);
@@ -91,7 +92,7 @@ export function CourseForm({ mode, course }: { mode: 'create' | 'edit'; course?:
       keyboardShouldPersistTaps="handled"
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-        <SquareIconButton glyph="←" onPress={() => router.back()} size={40} />
+        <SquareIconButton glyph="←" onPress={dismiss} size={40} />
         <Text style={{ fontFamily: fontFamilies.heading, fontSize: 16, color: colors.ink }}>
           {mode === 'create' ? 'NEW COURSE' : 'EDIT COURSE'}
         </Text>

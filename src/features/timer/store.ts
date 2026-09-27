@@ -101,6 +101,7 @@ export const useTimerStore = create<TimerStore>((set, get) => ({
         celebration: logged ? { minutes, auto: false } : null,
       });
       if (logged) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
         await logSession(s.courseId, startedAtMs, minutes);
         await get().actions.refreshSessions();
       }

@@ -26,7 +26,7 @@ async function createBackupZip(): Promise<string> {
   file.create({ intermediates: true, overwrite: true });
   file.write(zip);
   // Stamped only after the zip is safely on disk — silent and shared exports both count.
-  await writeSetting('backup_last_at', Date.now());
+  await writeSetting('backup_last_at', Date.now()).catch(() => undefined);
   return file.uri;
 }
 

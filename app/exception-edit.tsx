@@ -59,6 +59,7 @@ function ExceptionForm({ courseId }: { courseId: string }) {
     date,
     kind: activeKind,
     patternId: boundPatternId,
+    patternWeekday: patterns.find((p) => p.id === boundPatternId)?.weekday ?? null,
     startTime,
     endTime,
   });

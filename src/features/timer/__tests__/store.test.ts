@@ -117,7 +117,7 @@ it('manual finish logs rounded elapsed when it is at least a minute', async () =
   actions().tick(T0 + 25 * MIN);
   await actions().finish();
   expect(queries.insertSession).toHaveBeenCalledWith('c1', new Date(T0), 25);
-  expect(Haptics.notificationAsync).not.toHaveBeenCalled(); // haptics stay auto-finish only; manual ≥60s celebrates via `celebration` (Task 22)
+  expect(Haptics.notificationAsync).toHaveBeenCalledWith(Haptics.NotificationFeedbackType.Success);
   expect(store().state.status).toBe('idle');
   expect(store().state.remainingMs).toBe(60 * MIN);
 });
@@ -127,6 +127,7 @@ it('manual finish skips presses under a full wall-clock minute', async () => {
   actions().tick(T0 + 45_000);
   await actions().finish();
   expect(queries.insertSession).not.toHaveBeenCalled();
+  expect(Haptics.notificationAsync).not.toHaveBeenCalled();
   expect(store().state.status).toBe('idle');
 });
 

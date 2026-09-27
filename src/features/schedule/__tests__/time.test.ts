@@ -46,6 +46,21 @@ describe('validateException', () => {
     expect(validateException({ date: '2026-09-28', kind: 'cancelled', patternId: '' }).ok).toBe(false);
   });
 
+  it('rejects a cancelled exception on a date the pattern does not run', () => {
+    expect(validateException({
+      date: '2026-09-28', kind: 'cancelled', patternId: 'p1', patternWeekday: 1,
+    })).toEqual({ ok: true });
+    expect(validateException({
+      date: '2026-09-28', kind: 'cancelled', patternId: 'p1', patternWeekday: 3,
+    })).toEqual({
+      ok: false,
+      error: 'That class does not run on this date',
+    });
+    expect(validateException({
+      date: '2026-09-28', kind: 'cancelled', patternId: 'p1', patternWeekday: null,
+    }).ok).toBe(true);
+  });
+
   it('rejects a one_off with missing or malformed times', () => {
     const times = { date: '2026-09-28', kind: 'one_off' };
     expect(validateException(times)).toEqual({

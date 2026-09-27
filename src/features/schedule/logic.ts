@@ -1,3 +1,5 @@
+import { parseDateId } from '@/lib/schedule';
+
 export function isValidTime(v: string): boolean {
   if (!/^\d{2}:\d{2}$/.test(v)) return false;
   const [h, m] = v.split(':').map(Number);
@@ -85,10 +87,12 @@ export function validateException(input: {
   date?: string;
   kind?: string;
   patternId?: string | null;
+  patternWeekday?: number | null;
   startTime?: string | null;
   endTime?: string | null;
 }): { ok: boolean; error?: string } {
-  if (!isValidDateId((input.date ?? '').trim())) {
+  const date = (input.date ?? '').trim();
+  if (!isValidDateId(date)) {
     return { ok: false, error: 'Date must be YYYY-MM-DD' };
   }
   if (input.kind !== 'cancelled' && input.kind !== 'one_off') {
@@ -96,6 +100,13 @@ export function validateException(input: {
   }
   if (input.kind === 'cancelled' && !input.patternId) {
     return { ok: false, error: 'Pick the class to cancel' };
+  }
+  if (
+    input.kind === 'cancelled'
+    && input.patternWeekday != null
+    && parseDateId(date).getDay() !== input.patternWeekday
+  ) {
+    return { ok: false, error: 'That class does not run on this date' };
   }
   if (input.kind === 'one_off') {
     const start = (input.startTime ?? '').trim();

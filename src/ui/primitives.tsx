@@ -26,7 +26,7 @@ export function FilterChip({ label, count, active, onPress }:
         fontFamily: fontFamilies.mono, fontSize: 12,
         color: active ? colors.paper : colors.ink,
       }}>{label}</Text>
-      {count !== undefined && (
+      {count !== undefined && count > 0 && (
         <View style={{
           minWidth: 18, paddingHorizontal: 4, borderRadius: radius.pill,
           backgroundColor: active ? colors.paper : colors.ink,

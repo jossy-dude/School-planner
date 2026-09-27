@@ -216,7 +216,7 @@ export default function CourseScreen() {
   }
 
   if (editing) {
-    return <CourseForm mode="edit" course={course} />;
+    return <CourseForm mode="edit" course={course} onDone={() => setEditing(false)} />;
   }
 
   const confirmDelete = () => {

@@ -16,9 +16,9 @@ export interface DotEvent {
 export interface DotInfo {
   classCount: number;
   hasAbsence: boolean;
-  hasExam: boolean;
-  hasTask: boolean;
-  hasClub: boolean;
+  examCount: number;
+  taskCount: number;
+  clubCount: number;
 }
 
 export interface DayDotSpec {
@@ -40,9 +40,9 @@ export function dayDotInfo(
   return {
     classCount: occ.filter((o) => o.dateId === dateId).length,
     hasAbsence: absences.some((a) => a.date === dateId),
-    hasExam: events.some((e) => EXAM_KINDS.has(e.kind)),
-    hasTask: events.some((e) => e.kind === 'assignment' && !e.done),
-    hasClub: events.some((e) => e.kind === 'club'),
+    examCount: events.filter((e) => EXAM_KINDS.has(e.kind)).length,
+    taskCount: events.filter((e) => e.kind === 'assignment' && !e.done).length,
+    clubCount: events.filter((e) => e.kind === 'club').length,
   };
 }
 
@@ -60,9 +60,9 @@ export function dayDots(info: DotInfo, filters: readonly CalendarFilter[]): DayD
   if (on('CLASSES')) {
     for (let i = 0; i < Math.min(info.classCount, MAX_CLASS_DOTS); i += 1) out.push(CLASS_DOT);
   }
-  if (on('EXAMS') && info.hasExam) out.push(EXAM_DOT);
-  if (on('TASKS') && info.hasTask) out.push(TASK_DOT);
-  if (on('CLUBS') && info.hasClub) out.push(CLUB_DOT);
+  if (on('EXAMS') && info.examCount > 0) out.push(EXAM_DOT);
+  if (on('TASKS') && info.taskCount > 0) out.push(TASK_DOT);
+  if (on('CLUBS') && info.clubCount > 0) out.push(CLUB_DOT);
   // Absences have no filter chip, so their dot always shows.
   if (info.hasAbsence) out.push(ABSENCE_DOT);
   return out;
