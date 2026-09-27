@@ -27,8 +27,12 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
   exceptions: [],
   loaded: false,
   refresh: async () => {
-    const [patterns, exceptions] = await Promise.all([listPatterns(), listExceptions()]);
-    set({ patterns, exceptions, loaded: true });
+    try {
+      const [patterns, exceptions] = await Promise.all([listPatterns(), listExceptions()]);
+      set({ patterns, exceptions, loaded: true });
+    } catch {
+      set({ loaded: true });
+    }
     // Every mutation funnels through refresh, so this one hook covers all of them.
     void refreshReminders().catch(() => {});
   },

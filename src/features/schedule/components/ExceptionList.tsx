@@ -13,7 +13,7 @@ export function ExceptionList({ courseId }: { courseId: string }) {
   const confirmDelete = (e: ScheduleException) => {
     Alert.alert('Delete exception?', `${e.date} will be removed from the schedule.`, [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => { void removeException(e.id); } },
+      { text: 'Delete', style: 'destructive', onPress: () => { void removeException(e.id).catch(() => Alert.alert('Could not delete', 'The exception could not be removed.')); } },
     ]);
   };
 

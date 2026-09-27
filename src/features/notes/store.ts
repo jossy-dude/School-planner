@@ -18,8 +18,12 @@ export const useNotesStore = create<NotesState>((set, get) => ({
   notes: [],
   loaded: false,
   refresh: async (courseId) => {
-    const rows = await listNotesByCourse(courseId);
-    set({ courseId, notes: rows, loaded: true });
+    try {
+      const rows = await listNotesByCourse(courseId);
+      set({ courseId, notes: rows, loaded: true });
+    } catch {
+      set({ courseId, loaded: true });
+    }
   },
   create: async (draft) => {
     const row = await insertNote(draft);

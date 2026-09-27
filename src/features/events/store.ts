@@ -33,11 +33,15 @@ export const useEventsStore = create<EventsState>((set, get) => ({
   loaded: false,
   refresh: async (startMs, endMs) => {
     const now = Date.now();
-    const events = await listEventsInRange(
-      startMs ?? now - PAST_WINDOW_MS,
-      endMs ?? now + FUTURE_WINDOW_MS,
-    );
-    set({ events, loaded: true });
+    try {
+      const events = await listEventsInRange(
+        startMs ?? now - PAST_WINDOW_MS,
+        endMs ?? now + FUTURE_WINDOW_MS,
+      );
+      set({ events, loaded: true });
+    } catch {
+      set({ loaded: true });
+    }
     // Every mutation funnels through refresh, so this one hook covers all of them.
     void refreshReminders().catch(() => {});
   },

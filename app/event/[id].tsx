@@ -28,7 +28,7 @@ function defaultDueAtMs(dueAt?: string): number {
 
 export default function EventModal() {
   const { id, dueAt, courseId } = useLocalSearchParams<{ id?: string; dueAt?: string; courseId?: string }>();
-  const [resolved, setResolved] = useState<{ id: string; event: SchoolEvent | null } | null>(null);
+  const [resolved, setResolved] = useState<{ id: string; event: SchoolEvent | null; failed: boolean } | null>(null);
 
   const isNew = id === 'new';
 
@@ -36,8 +36,8 @@ export default function EventModal() {
     if (id === undefined || id === 'new') return;
     let alive = true;
     void getEventById(id)
-      .then((ev) => { if (alive) setResolved({ id, event: ev }); })
-      .catch(() => { if (alive) setResolved({ id, event: null }); });
+      .then((ev) => { if (alive) setResolved({ id, event: ev, failed: false }); })
+      .catch(() => { if (alive) setResolved({ id, event: null, failed: true }); });
     return () => { alive = false; };
   }, [id]);
 
@@ -50,7 +50,7 @@ export default function EventModal() {
   } else if (loading) {
     content = <EmptyState glyph="◆" label="loading…" />;
   } else if (!isNew && !existing) {
-    content = <EmptyState glyph="◆" label="event not found" />;
+    content = <EmptyState glyph="◆" label={resolved?.failed === true ? 'could not load event' : 'event not found'} />;
   } else {
     content = (
       <EventForm

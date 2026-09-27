@@ -21,17 +21,21 @@ export const usePromisesStore = create<PromisesState>((set, get) => ({
   refresh: async (weekStart) => {
     // Week start covers both windows: every day promise's window is inside it.
     const sinceMs = windowStartMs('week', Date.now(), weekStart);
-    const [promises, rows] = await Promise.all([listPromises(), listSessionsSince(sinceMs)]);
-    set({
-      promises,
-      sessions: rows.map((r) => ({
-        startedAtMs: r.startedAt.getTime(),
-        durationMin: r.durationMin,
-        courseId: r.courseId,
-      })),
-      weekStart,
-      loaded: true,
-    });
+    try {
+      const [promises, rows] = await Promise.all([listPromises(), listSessionsSince(sinceMs)]);
+      set({
+        promises,
+        sessions: rows.map((r) => ({
+          startedAtMs: r.startedAt.getTime(),
+          durationMin: r.durationMin,
+          courseId: r.courseId,
+        })),
+        weekStart,
+        loaded: true,
+      });
+    } catch {
+      set({ weekStart, loaded: true });
+    }
   },
   add: async (draft) => {
     await insertPromise(draft);

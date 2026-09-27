@@ -68,8 +68,12 @@ function PatternForm({ courseId, pattern, savePattern, removePattern }: {
         text: 'Delete',
         style: 'destructive',
         onPress: async () => {
-          await removePattern(pattern.id);
-          router.back();
+          try {
+            await removePattern(pattern.id);
+            router.back();
+          } catch {
+            setError('Could not delete pattern');
+          }
         },
       },
     ]);

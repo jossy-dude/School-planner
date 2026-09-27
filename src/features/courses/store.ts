@@ -18,7 +18,11 @@ export const useCoursesStore = create<CoursesState>((set, get) => ({
   courses: [],
   loaded: false,
   refresh: async () => {
-    set({ courses: await listCourses(), loaded: true });
+    try {
+      set({ courses: await listCourses(), loaded: true });
+    } catch {
+      set({ loaded: true });
+    }
     // Every mutation funnels through refresh, and course rows feed reminder
     // planning (per-course lead overrides) — so any change reschedules here.
     void refreshReminders().catch(() => {});

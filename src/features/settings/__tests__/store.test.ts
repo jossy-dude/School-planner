@@ -70,3 +70,20 @@ it('every settings write reschedules reminders; hydrating does not', async () =>
   await useSettingsStore.getState().hydrate();
   expect(refreshReminders).toHaveBeenCalledTimes(2);
 });
+
+it('reverts the optimistic value when the write fails, without rejecting', async () => {
+  queries.writeSetting.mockRejectedValue(new Error('disk full'));
+
+  await expect(useSettingsStore.getState().set('study_goal_min', 90)).resolves.toBeUndefined();
+
+  expect(useSettingsStore.getState().settings.study_goal_min).toBe(DEFAULT_SETTINGS.study_goal_min);
+});
+
+it('hydrate still settles with defaults when reading fails', async () => {
+  queries.readAllSettings.mockRejectedValue(new Error('db locked'));
+
+  await expect(useSettingsStore.getState().hydrate()).resolves.toBeUndefined();
+
+  expect(useSettingsStore.getState().hydrated).toBe(true);
+  expect(useSettingsStore.getState().settings).toEqual(DEFAULT_SETTINGS);
+});

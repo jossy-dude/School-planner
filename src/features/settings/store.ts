@@ -14,12 +14,21 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   settings: { ...DEFAULT_SETTINGS },
   hydrated: false,
   hydrate: async () => {
-    const stored = await readAllSettings();
-    set({ settings: { ...DEFAULT_SETTINGS, ...stored } as Settings, hydrated: true });
+    try {
+      const stored = await readAllSettings();
+      set({ settings: { ...DEFAULT_SETTINGS, ...stored } as Settings, hydrated: true });
+    } catch {
+      set({ hydrated: true });
+    }
   },
   set: async (key, value) => {
-    set({ settings: { ...get().settings, [key]: value } });
-    await writeSetting(key, value);
+    const previous = get().settings;
+    set({ settings: { ...previous, [key]: value } });
+    try {
+      await writeSetting(key, value);
+    } catch {
+      set({ settings: previous });
+    }
     // Settings feed reminder planning (default lead) — funnel every write rather
     // than key-matching, so a lead change reschedules notifications immediately.
     void refreshReminders().catch(() => {});

@@ -19,7 +19,7 @@ function Header({ title }: { title: string }) {
 
 export default function GradeModal() {
   const { id, courseId } = useLocalSearchParams<{ id?: string; courseId?: string }>();
-  const [resolved, setResolved] = useState<{ id: string; grade: Grade | null } | null>(null);
+  const [resolved, setResolved] = useState<{ id: string; grade: Grade | null; failed: boolean } | null>(null);
 
   const isNew = id === 'new';
 
@@ -27,8 +27,8 @@ export default function GradeModal() {
     if (id === undefined || id === 'new') return;
     let alive = true;
     void getGradeById(id)
-      .then((g) => { if (alive) setResolved({ id, grade: g }); })
-      .catch(() => { if (alive) setResolved({ id, grade: null }); });
+      .then((g) => { if (alive) setResolved({ id, grade: g, failed: false }); })
+      .catch(() => { if (alive) setResolved({ id, grade: null, failed: true }); });
     return () => { alive = false; };
   }, [id]);
 
@@ -41,7 +41,7 @@ export default function GradeModal() {
   } else if (loading) {
     content = <EmptyState glyph="Ⓦ" label="loading…" />;
   } else if (!isNew && !existing) {
-    content = <EmptyState glyph="Ⓦ" label="grade not found" />;
+    content = <EmptyState glyph="Ⓦ" label={resolved?.failed === true ? 'could not load grade' : 'grade not found'} />;
   } else {
     content = <GradeForm key={existing?.id ?? 'new'} grade={existing ?? undefined} courseId={courseId} />;
   }

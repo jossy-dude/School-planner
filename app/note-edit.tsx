@@ -168,7 +168,7 @@ function NoteForm({ note, courseId }: { note?: Note; courseId: string }) {
 
 export default function NoteModal() {
   const { id, courseId } = useLocalSearchParams<{ id?: string; courseId?: string }>();
-  const [resolved, setResolved] = useState<{ id: string; note: Note | null } | null>(null);
+  const [resolved, setResolved] = useState<{ id: string; note: Note | null; failed: boolean } | null>(null);
 
   const isNew = id === 'new';
 
@@ -176,8 +176,8 @@ export default function NoteModal() {
     if (id === undefined || id === 'new') return;
     let alive = true;
     void getNoteById(id)
-      .then((n) => { if (alive) setResolved({ id, note: n }); })
-      .catch(() => { if (alive) setResolved({ id, note: null }); });
+      .then((n) => { if (alive) setResolved({ id, note: n, failed: false }); })
+      .catch(() => { if (alive) setResolved({ id, note: null, failed: true }); });
     return () => { alive = false; };
   }, [id]);
 
@@ -190,7 +190,7 @@ export default function NoteModal() {
   } else if (loading) {
     content = <EmptyState glyph="Ⓦ" label="loading…" />;
   } else if (!isNew && !existing) {
-    content = <EmptyState glyph="Ⓦ" label="note not found" />;
+    content = <EmptyState glyph="Ⓦ" label={resolved?.failed === true ? 'could not load note' : 'note not found'} />;
   } else {
     content = <NoteForm key={existing?.id ?? 'new'} note={existing ?? undefined} courseId={courseId} />;
   }

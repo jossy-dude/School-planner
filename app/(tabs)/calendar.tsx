@@ -115,7 +115,7 @@ export default function CalendarScreen() {
           courseId: e.courseId,
         })));
         setMonthAttendance(rows);
-      })();
+      })().catch(() => {});
       return () => { alive = false; };
     }, [rangeStart, rangeEnd, loadAttendance]),
   );

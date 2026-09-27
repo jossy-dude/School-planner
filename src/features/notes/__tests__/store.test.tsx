@@ -45,6 +45,26 @@ it('refresh loads the course notes and marks loaded', async () => {
   expect(queries.listNotesByCourse).toHaveBeenCalledWith('c1');
 });
 
+it('refresh marks loaded even when the read fails', async () => {
+  queries.listNotesByCourse.mockRejectedValue(new Error('db locked'));
+
+  await expect(useNotesStore.getState().refresh('c1')).resolves.toBeUndefined();
+
+  const s = useNotesStore.getState();
+  expect(s.loaded).toBe(true);
+  expect(s.courseId).toBe('c1');
+  expect(s.notes).toEqual([]);
+});
+
+it('create still resolves when the post-write refresh fails', async () => {
+  queries.listNotesByCourse.mockRejectedValue(new Error('db locked'));
+  const draft: NoteDraft = { courseId: 'c1', kind: 'exam_tip', body: 'revise ch.3' };
+
+  await expect(useNotesStore.getState().create(draft)).resolves.toEqual(tip);
+
+  expect(queries.insertNote).toHaveBeenCalledWith(draft);
+});
+
 it('create inserts then funnels one refresh', async () => {
   const draft: NoteDraft = { courseId: 'c1', kind: 'exam_tip', body: 'revise ch.3' };
   const created = await useNotesStore.getState().create(draft);

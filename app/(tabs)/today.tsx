@@ -147,6 +147,7 @@ function PromisesSection() {
   const [targetMin, setTargetMin] = useState(60);
   const [period, setPeriod] = useState<'day' | 'week'>('day');
   const [courseId, setCourseId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     void refreshCourses().catch(() => {});
@@ -175,6 +176,7 @@ function PromisesSection() {
     setTargetMin(60);
     setPeriod('day');
     setCourseId(null);
+    setError(null);
   };
 
   const submit = async () => {
@@ -185,7 +187,7 @@ function PromisesSection() {
       closeAdd();
       setNowMs(Date.now());
     } catch {
-      // Keep the form open; the next focus reload retries.
+      setError('Could not save promise');
     }
   };
 
@@ -253,6 +255,11 @@ function PromisesSection() {
             onChange={(v) => setPeriod(v === 'WEEK' ? 'week' : 'day')}
           />
           <SubjectPicker courses={courses} selectedId={courseId} onSelect={setCourseId} disabled={false} />
+          {error !== null && (
+            <Text style={{ fontFamily: fontFamilies.mono, fontSize: 13, color: colors.danger }} accessibilityRole="alert">
+              {error}
+            </Text>
+          )}
           <View style={{ flexDirection: 'row', gap: 8 }}>
             <Pressable
               onPress={() => void submit()}

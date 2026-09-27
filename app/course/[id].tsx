@@ -94,14 +94,14 @@ function GradesPanel({ courseId }: { courseId: string }) {
   const confirmDeleteGrade = (g: Grade) => {
     Alert.alert('Delete grade?', `${g.title} will be permanently removed.`, [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => { void removeGrade(g.id); } },
+      { text: 'Delete', style: 'destructive', onPress: () => { void removeGrade(g.id).catch(() => Alert.alert('Could not delete', 'The grade could not be removed.')); } },
     ]);
   };
 
   const confirmDeleteCategory = (c: GradeCategory) => {
     Alert.alert('Delete category?', `${c.name} will be removed. Grades keep their scores but lose the tag.`, [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => { void removeCategory(c.id); } },
+      { text: 'Delete', style: 'destructive', onPress: () => { void removeCategory(c.id).catch(() => Alert.alert('Could not delete', 'The category could not be removed.')); } },
     ]);
   };
 
@@ -133,7 +133,7 @@ function GradesPanel({ courseId }: { courseId: string }) {
 
       <CategoryChips
         categories={categories}
-        onAdd={(draft) => { void addCategory(draft); }}
+        onAdd={(draft) => { void addCategory(draft).catch(() => Alert.alert('Could not save', 'The category could not be added.')); }}
         onLongPress={confirmDeleteCategory}
       />
 
@@ -236,7 +236,7 @@ export default function CourseScreen() {
   const confirmDeletePattern = (p: Pattern) => {
     Alert.alert('Delete pattern?', `${p.startTime}–${p.endTime} will be removed from the schedule.`, [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => removePattern(p.id) },
+      { text: 'Delete', style: 'destructive', onPress: () => { void removePattern(p.id).catch(() => Alert.alert('Could not delete', 'The class time could not be removed.')); } },
     ]);
   };
 

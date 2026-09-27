@@ -38,12 +38,16 @@ export const useGpaStore = create<GpaState>((set) => ({
   selectedTermId: null,
   loaded: false,
   refresh: async () => {
-    const [grades, terms, scales] = await Promise.all([
-      listAllGrades(),
-      listTerms(),
-      listGpaScales(),
-    ]);
-    set({ grades, terms, scales, loaded: true });
+    try {
+      const [grades, terms, scales] = await Promise.all([
+        listAllGrades(),
+        listTerms(),
+        listGpaScales(),
+      ]);
+      set({ grades, terms, scales, loaded: true });
+    } catch {
+      set({ loaded: true });
+    }
   },
   setMode: (mode) => set({ mode }),
   setSelectedTermId: (selectedTermId) => set({ selectedTermId }),

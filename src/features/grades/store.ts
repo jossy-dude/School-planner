@@ -32,8 +32,12 @@ export const useGradesStore = create<GradesState>((set, get) => ({
   grades: [],
   loaded: false,
   refresh: async (courseId) => {
-    const [categories, grades] = await Promise.all([listCategories(courseId), listGrades(courseId)]);
-    set({ courseId, categories, grades, loaded: true });
+    try {
+      const [categories, grades] = await Promise.all([listCategories(courseId), listGrades(courseId)]);
+      set({ courseId, categories, grades, loaded: true });
+    } catch {
+      set({ courseId, loaded: true });
+    }
     // Grades are not reminders, so no refreshReminders() here. finalPct is
     // never stored — useGrades re-derives it from this grades array.
   },
