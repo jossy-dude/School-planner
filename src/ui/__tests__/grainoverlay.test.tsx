@@ -29,3 +29,9 @@ it('uses a valid SKSL runtime-effect entry point', () => {
   expect(src).toMatch(/half4 main\(float2/);
   expect(src).not.toMatch(/fragment main/);
 });
+
+it('returns a premultiplied color so the grain cannot wash out the screen', () => {
+  const src = fs.readFileSync(path.join(__dirname, '../GrainOverlay.tsx'), 'utf8');
+  expect(src).toMatch(/half4\(n \* 0\.05, n \* 0\.05, n \* 0\.05, 0\.05\)/);
+  expect(src).not.toMatch(/half4\(n, n, n, 0\.05\)/);
+});

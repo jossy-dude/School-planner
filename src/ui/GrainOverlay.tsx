@@ -9,7 +9,7 @@ uniform float2 uResolution;
 float hash(float2 p) { return fract(sin(dot(p, float2(127.1, 311.7))) * 43758.5453); }
 half4 main(float2 xy) {
   float n = hash(floor(xy));
-  return half4(n, n, n, 0.05);
+  return half4(n * 0.05, n * 0.05, n * 0.05, 0.05);
 }
 `);
   } catch {
