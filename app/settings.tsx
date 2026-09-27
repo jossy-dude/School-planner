@@ -1,10 +1,11 @@
-import { ReactNode, useEffect } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import * as Haptics from 'expo-haptics';
 import { ScrollView, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { ScaleEditor } from '@/features/gpa/components/ScaleEditor';
 import { exportBackup } from '@/features/backup/exporter';
 import { importBackup } from '@/features/backup/importer';
+import { notificationsGranted } from '@/features/reminders/notify';
 import { toDateId } from '@/lib/schedule';
 import { BrutCard } from '@/ui/BrutCard';
 import { FilterChip, SegmentedChips, SquareIconButton } from '@/ui/primitives';
@@ -52,7 +53,15 @@ function Stepper({ value, step, min, max, onChange }: {
 export default function SettingsScreen() {
   const settings = useSettings();
   const { set, hydrate } = useSettingsStore();
+  const [granted, setGranted] = useState(true);
   useEffect(() => { hydrate(); }, [hydrate]);
+  useEffect(() => {
+    let alive = true;
+    notificationsGranted()
+      .then((g) => { if (alive) setGranted(g); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, []);
   return (
     <View style={{ flex: 1, backgroundColor: colors.paper, padding: 16 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 }}>
@@ -65,6 +74,12 @@ export default function SettingsScreen() {
             <Stepper value={settings.reminder_lead_default_min} step={15} min={0} max={1440}
               onChange={(v) => void set('reminder_lead_default_min', v)} />
           </Row>
+          {!granted && (
+            <Text style={{ fontFamily: fontFamilies.mono, fontSize: 12, color: colors.danger, paddingVertical: 6 }}
+              accessibilityRole="alert">
+              notifications are off — reminders will not fire
+            </Text>
+          )}
         </Section>
         <Section title="STUDY">
           <Row label="DAILY GOAL · MIN">

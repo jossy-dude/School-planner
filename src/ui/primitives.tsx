@@ -98,8 +98,8 @@ const TONE_COLORS: Record<IconButtonTone, string> = {
   ink70: colors.ink70,
 };
 
-export function SquareIconButton({ glyph, onPress, tone = 'ink', size = 44, active = false, label }:
-  { glyph: string; onPress: () => void; tone?: IconButtonTone; size?: number; active?: boolean; label?: string }) {
+export function SquareIconButton({ glyph, onPress, tone = 'ink', size = 44, active = false, label, hitSlop }:
+  { glyph: string; onPress: () => void; tone?: IconButtonTone; size?: number; active?: boolean; label?: string; hitSlop?: number }) {
   const press = useSharedValue(0);
   const toneColor = TONE_COLORS[tone];
   const background = active ? toneColor : colors.paper;
@@ -113,6 +113,7 @@ export function SquareIconButton({ glyph, onPress, tone = 'ink', size = 44, acti
       onPress={onPress}
       onPressIn={() => springPress(press, 3)}
       onPressOut={() => springPress(press, 0)}
+      hitSlop={hitSlop}
       accessibilityRole="button"
       accessibilityLabel={label ?? glyph}
       accessibilityState={active ? { selected: true } : undefined}

@@ -41,7 +41,8 @@ export function HeroCard() {
     ? Math.max(0, occ.endMs - nowMs)
     : Math.max(0, occ.startMs - nowMs);
   const totalMs = active ? occ.endMs - occ.startMs : remaining;
-  const progress = active ? (nowMs - occ.startMs) / (occ.endMs - occ.startMs) : 0;
+  const span = Math.max(1, occ.endMs - occ.startMs);
+  const progress = active ? Math.min(1, Math.max(0, (nowMs - occ.startMs) / span)) : 0;
 
   return (
     <BrutCard>

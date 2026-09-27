@@ -1,6 +1,6 @@
 import { Calendar, toDateId, useCalendar } from '@marceloterreiro/flash-calendar';
 import type { CalendarTheme } from '@marceloterreiro/flash-calendar';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { LayoutChangeEvent } from 'react-native';
 import { ScrollView, Text, View } from 'react-native';
 import Animated, { useAnimatedRef } from 'react-native-reanimated';
@@ -37,6 +37,7 @@ export default function CalendarScreen() {
   const [size, setSize] = useState({ width: 0, height: 0 });
   const [monthEvents, setMonthEvents] = useState<DotEvent[]>([]);
   const [monthAttendance, setMonthAttendance] = useState<Attendance[]>([]);
+  const loadedRangeRef = useRef<string | null>(null);
 
   const patterns = useScheduleStore((s) => s.patterns);
   const exceptions = useScheduleStore((s) => s.exceptions);
@@ -101,11 +102,17 @@ export default function CalendarScreen() {
       if (rangeStart === null || rangeEnd === null) return;
       let alive = true;
       void (async () => {
+        const rangeKey = `${rangeIdStart}:${rangeIdEnd}`;
+        if (loadedRangeRef.current !== rangeKey) {
+          setMonthEvents([]);
+          setMonthAttendance([]);
+        }
         const [ev, rows] = await Promise.all([
           listEventsInRange(rangeStart, rangeEnd),
           loadAttendance(),
         ]);
         if (!alive) return;
+        loadedRangeRef.current = rangeKey;
         setMonthEvents(ev.map((e) => ({
           id: e.id,
           kind: e.kind,
@@ -117,7 +124,7 @@ export default function CalendarScreen() {
         setMonthAttendance(rows);
       })().catch(() => {});
       return () => { alive = false; };
-    }, [rangeStart, rangeEnd, loadAttendance]),
+    }, [rangeStart, rangeEnd, rangeIdStart, rangeIdEnd, loadAttendance]),
   );
 
   const eventsByDay = useMemo(() => {

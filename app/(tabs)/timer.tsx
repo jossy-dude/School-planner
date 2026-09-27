@@ -75,6 +75,10 @@ export default function TimerScreen() {
     return () => clearInterval(id);
   }, [actions]);
 
+  useEffect(() => () => {
+    useTimerStore.getState().actions.dismissCelebration();
+  }, []);
+
   const locked = state.status !== 'idle';
 
   return (

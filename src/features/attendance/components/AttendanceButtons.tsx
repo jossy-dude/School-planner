@@ -27,6 +27,7 @@ export function AttendanceButtons({ value, onSelect, size = 24 }:
           glyph={GLYPHS[status]}
           tone={TONES[status]}
           size={size}
+          hitSlop={12}
           active={value === status}
           label={status}
           onPress={() => {

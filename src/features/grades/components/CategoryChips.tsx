@@ -66,17 +66,23 @@ export function CategoryChips({ categories, selectedId, onSelect, onLongPress, o
   const [adding, setAdding] = useState(false);
   const [name, setName] = useState('');
   const [weight, setWeight] = useState('100');
+  const [error, setError] = useState<string | null>(null);
   const manage = onAdd !== undefined || onLongPress !== undefined;
   const select = onSelect !== undefined;
 
   const submit = () => {
     const trimmed = name.trim();
     if (trimmed.length === 0) return;
-    const parsed = weight.trim() === '' ? Number.NaN : Number(weight);
-    const next = Number.isFinite(parsed) ? Math.min(100, Math.max(0, Math.round(parsed))) : 100;
+    const raw = weight.trim();
+    if (raw !== '' && !Number.isFinite(Number(raw))) {
+      setError('weight must be a number');
+      return;
+    }
+    const next = raw === '' ? 100 : Math.min(100, Math.max(0, Math.round(Number(raw))));
     onAdd?.({ name: trimmed, weight: next });
     setName('');
     setWeight('100');
+    setError(null);
     setAdding(false);
   };
 
@@ -100,30 +106,43 @@ export function CategoryChips({ categories, selectedId, onSelect, onLongPress, o
           />
         ))}
         {manage && (
-          <SquareIconButton glyph="+" size={28} label="add category" onPress={() => setAdding((v) => !v)} />
+          <SquareIconButton glyph="+" size={28} label="add category"
+            onPress={() => { setAdding((v) => !v); setError(null); }} />
         )}
       </View>
+      {manage && categories.length > 0 && (
+        <Text style={{ fontFamily: fontFamilies.mono, fontSize: 11, color: colors.ink40 }}>
+          long-press a chip to remove it
+        </Text>
+      )}
       {manage && adding && (
-        <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
-          <TextInput
-            value={name}
-            onChangeText={setName}
-            placeholder="e.g. HW"
-            placeholderTextColor={colors.ink40}
-            style={[fieldBox, { flex: 1 }]}
-            accessibilityLabel="category name"
-          />
-          <TextInput
-            value={weight}
-            onChangeText={setWeight}
-            keyboardType="numeric"
-            placeholder="40"
-            placeholderTextColor={colors.ink40}
-            style={[fieldBox, { width: 68, fontFamily: fontFamilies.lcd }]}
-            accessibilityLabel="category weight percent"
-          />
-          <Text style={{ fontFamily: fontFamilies.mono, fontSize: 12, color: colors.ink40 }}>%</Text>
-          <SquareIconButton glyph="✓" size={32} label="confirm add category" onPress={submit} />
+        <View style={{ gap: 6 }}>
+          <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+            <TextInput
+              value={name}
+              onChangeText={setName}
+              placeholder="e.g. HW"
+              placeholderTextColor={colors.ink40}
+              style={[fieldBox, { flex: 1 }]}
+              accessibilityLabel="category name"
+            />
+            <TextInput
+              value={weight}
+              onChangeText={(v) => { setWeight(v); setError(null); }}
+              keyboardType="numeric"
+              placeholder="40"
+              placeholderTextColor={colors.ink40}
+              style={[fieldBox, { width: 68, fontFamily: fontFamilies.lcd }]}
+              accessibilityLabel="category weight percent"
+            />
+            <Text style={{ fontFamily: fontFamilies.mono, fontSize: 12, color: colors.ink40 }}>%</Text>
+            <SquareIconButton glyph="✓" size={32} label="confirm add category" onPress={submit} />
+          </View>
+          {error !== null && (
+            <Text style={{ fontFamily: fontFamilies.mono, fontSize: 12, color: colors.danger }} accessibilityRole="alert">
+              {error}
+            </Text>
+          )}
         </View>
       )}
     </View>

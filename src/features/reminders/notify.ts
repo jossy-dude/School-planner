@@ -28,6 +28,15 @@ export async function ensureNotificationSetup(): Promise<boolean> {
   return req.granted;
 }
 
+export async function notificationsGranted(): Promise<boolean> {
+  try {
+    const existing = await getPermissionsAsync();
+    return existing.granted;
+  } catch {
+    return true;
+  }
+}
+
 export async function rescheduleAll(plan: PlannedReminder[]): Promise<void> {
   await cancelAllScheduledNotificationsAsync();
   for (const r of plan.slice(0, 64)) {

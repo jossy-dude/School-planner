@@ -317,7 +317,7 @@ export default function CourseScreen() {
           <Text style={{ fontFamily: fontFamilies.heading, fontSize: 13, color: colors.ink70 }}>
             {s.glyph} {s.title}
           </Text>
-          <EmptyState glyph={s.glyph} label="nothing here yet" />
+          <EmptyState glyph={s.glyph} label="coming soon" />
         </View>
       )))}
     </ScrollView>
