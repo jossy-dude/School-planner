@@ -788,16 +788,27 @@ Add dependency if the type import fails: `npm i -D @types/react-navigation` is N
 import renderer from 'react-test-renderer';
 import { FilterChip, TMinusChip, Stamp } from '../primitives';
 
-const json = (n: React.ReactElement) => JSON.stringify(renderer.create(n).toJSON());
+const textContents = (n: React.ReactElement): string => {
+  const out: string[] = [];
+  const walk = (node: unknown): void => {
+    if (node === null || typeof node !== 'object') return;
+    const n2 = node as { children?: unknown };
+    if (Array.isArray(n2.children)) n2.children.forEach(walk);
+    else if (typeof n2.children === 'string') out.push(n2.children);
+  };
+  walk(renderer.create(n).toJSON());
+  return out.join('|');
+};
 
-it('chip shows count', () => {
-  expect(json(<FilterChip label="CLASSES" count={5} active onPress={() => {}} />)).toContain('5');
+it('chip shows count in its own pill (mutation-guarded)', () => {
+  expect(textContents(<FilterChip label="CLASSES" count={5} active onPress={() => {}} />)).toContain('5');
+  // fails if the count pill block is removed
 });
 it('t-minus uses lcd text', () => {
-  expect(json(<TMinusChip text="T-6D" />)).toContain('T-6D');
+  expect(textContents(<TMinusChip text="T-6D" />)).toContain('T-6D');
 });
 it('stamp renders text', () => {
-  expect(json(<Stamp text="DONE" />)).toContain('DONE');
+  expect(textContents(<Stamp text="DONE" />)).toContain('DONE');
 });
 ```
 
@@ -1727,9 +1738,19 @@ export function isValidTime(v: string): boolean {
   return h! < 24 && m! < 60;
 }
 export function normalizeTime(v: string): string {
+  if (v.includes(':')) {
+    const [hs = '', ms = ''] = v.split(':');
+    const pad = (s: string) => s.replace(/\D/g, '').slice(0, 2).padStart(2, '0');
+    return `${pad(hs)}:${pad(ms)}`;
+  }
   const digits = v.replace(/\D/g, '').slice(0, 4);
-  if (digits.length < 4) return digits.length > 2 ? `${digits.slice(0, 2)}:${digits.slice(2)}` : digits;
-  return `${digits.slice(0, 2)}:${digits.slice(2)}`;
+  if (digits.length === 0) return '';
+  if (digits.length <= 2) {
+    const h = (digits[0] ?? '0').padStart(2, '0');
+    const m = (digits[1] ?? '0').padStart(2, '0');
+    return `${h}:${m}`;
+  }
+  return `${digits.slice(0, 2)}:${digits.slice(2, 4).padStart(2, '0')}`;
 }
 ```
 Run → PASS.
@@ -1739,7 +1760,7 @@ Run → PASS.
 - [ ] **Step 3: Components**
 
 `WeekdayChips`: 7 Pressables, selected = ink bg + paper letter, unselected = paper + ink15 border.
-`TimeField`: two `<TextInput>` (mono font, numeric `keyboardType="number-pad"`, maxLength 2/2) joined by `:`; onBlur → `normalizeTime`; parent validates with `isValidTime`.
+`TimeField`: two `<TextInput>` (mono font, numeric `keyboardType="number-pad"`, maxLength 2/2) joined by `:`; onBlur → `normalizeTime(\`${hh}:${mm}\`)` on the combined string, then split the result back into the two inputs; parent validates with `isValidTime`.
 
 - [ ] **Step 4: `app/schedule-edit.tsx` modal**
 
@@ -1822,13 +1843,18 @@ export function weekOccurrences(slice: ScheduleSlice, nowMs: number, weekStart: 
   const offset = weekStart === 'monday' ? (d.getDay() + 6) % 7 : d.getDay();
   const start = new Date(d); start.setDate(d.getDate() - offset);
   const end = new Date(start); end.setDate(start.getDate() + 7);
-  return occurrencesInRange(slice.patterns, slice.exceptions, start.getTime(), end.getTime());
+  // last millisecond of the week (exclusive-style end against the engine's inclusive filter)
+  return occurrencesInRange(slice.patterns, slice.exceptions, start.getTime(), end.getTime() - 1);
 }
 
 export function nextActiveOccurrence(slice: ScheduleSlice, nowMs: number):
   { current: Occurrence | null; next: Occurrence | null } {
   const day = todayOccurrences(slice, nowMs);
-  const current = day.find((o) => nowMs >= o.startMs && nowMs < o.endMs) ?? null;
+  // cross-midnight: a session that STARTED yesterday may still be running past midnight
+  const yesterday = new Date(nowMs); yesterday.setDate(yesterday.getDate() - 1);
+  const stillRunning = occurrencesInRange(slice.patterns, slice.exceptions, yesterday.getTime(), nowMs)
+    .filter((o) => o.endMs > nowMs && o.startMs < nowMs);
+  const current = [...stillRunning, ...day].find((o) => nowMs >= o.startMs && nowMs < o.endMs) ?? null;
   if (current) return { current, next: null };
   const upcoming = [...day, ...occurrencesInRange(slice.patterns, slice.exceptions, nowMs, nowMs + 7 * 86_400_000)]
     .filter((o) => o.startMs > nowMs)
@@ -2381,9 +2407,9 @@ git commit -m "feat: attendance marking, stats, weekly gauge"
 ```ts
 export type EventKind = 'assignment' | 'test' | 'quiz' | 'club' | 'meeting' | 'other';
 export function validateEvent(input: { title?: string; dueAtMs?: number; kind?: EventKind }): { ok: boolean; error?: string };
-export function tMinusLabel(dueAtMs: number, nowMs: number): string; // "T-6D", "T-14H", "TODAY", "OVERDUE"
+export function tMinusLabel(dueAtMs: number, nowMs: number): string; // "T-6D", "T-14H", "T-30M", "OVERDUE"
 ```
-Rules: `tMinusLabel`: >7d → `T-<N>D` (ceil days); 7d≥x>1d → `T-<N>D`; 1d≥x>1h → `T-<N>H`; 1h≥x>0 → `T-<N>M`; x≤0 → `OVERDUE` (danger); same calendar day & future → `TODAY`.
+Rules: `tMinusLabel` (bands cover all x > 0; order: OVERDUE first, then magnitude bands): >7d → `T-<N>D` (ceil days); 7d≥x>1d → `T-<N>D` (ceil); 1d≥x>1h → `T-<N>H` (ceil); 1h≥x>0 → `T-<N>M` (ceil); x≤0 → `OVERDUE` (danger). NOTE (amendment): the original "same calendar day & future → TODAY" clause is removed — it conflicts with the pinned tests (a 5h/30m/90m deadline that falls on the same calendar day must return `T-5H`/`T-30M`/`T-2H`, not `TODAY`); tests win per the Task 9 precedent.
 - RN: store `useEventsStore` (list by date range, toggle done, CRUD); `EventForm` modal: KindChip row (6 kinds with glyphs `📝 assignment, 📝 test... glyphs: assignment 📋, test 📝, quiz ❓, club ⚑, meeting ◎, other •`), title input, description input (multiline), course picker (chips of courses + NONE), due date+time (TimeField + `YYYY-MM-DD` field), lead override chips (15/60/1440/null), SAVE/DELETE.
 - `TicketCard({ event, nowMs })` — BrutCard with `TMinusChip tMinusLabel(...)`, title, one-line description (`numberOfLines={2}`), course emoji chip, done checkbox (`Stamp text="DONE"` when done, tap toggles).
 
@@ -2482,15 +2508,15 @@ export interface GradeRow { score: number; maxScore: number; weightOverride: num
 export function validateScale(rows: ScaleRow[]): { ok: boolean; errors: string[] };
 export function sortScaleRows(rows: ScaleRow[]): ScaleRow[];
 export function courseFinalPct(grades: GradeRow[]): number | null;   // null when no grades
-export function pointsForPct(pct: number, scale: Scale): number;     // interpolate between bounds; below lowest min → points of lowest row (or 0 if minPct>0 floor?)
+export function pointsForPct(pct: number, scale: Scale): number;     // continuous piecewise-linear: band floor → ceiling row (see amended rules below); pct ≥ top min → top points; below lowest min → lowest row's points (clamped ≥ 0)
 export function computeGpa(courses: CourseInput[], scale: Scale, rounding: number): { gpa: number | null; totalCredits: number; includedCount: number };
 export function targetGpaNeeded(courses: CourseInput[], scale: Scale, target: number): number | null; // avg points needed on remaining (finalPct===null) credits
 export function neededOnFinal(input: { currentPct: number; finalWeight: number; targetPct: number }): { neededPct: number; band: 'safe' | 'borderline' | 'impossible' };
 ```
 Rules (from spec):
-- `validateScale`: errors for empty rows, duplicate letters, non-increasing `minPct` (rows must be strictly descending after sort), **gaps** between adjacent `minPct` bounds (next row's min must equal previous min exactly? No — gaps allowed only if next.minPct === prev.minPct is overlap; a gap = prev row occupies [min, next.min) naturally... ). Concrete rule: after sorting desc by minPct, require rows[i].minPct > rows[i+1].minPct (strict, catches duplicates/overlaps) and rows[last].minPct === 0 is NOT required but warn-free. Gap between bounds doesn't exist in this model because ranges are [min, +inf) chains — so the ONLY errors: empty, duplicate letters (case-insensitive), non-strict-descending minPct, negative points, minPct outside 0–100.
+- `validateScale`: **validates rows AS GIVEN** (caller sorts first via `sortScaleRows` — AMENDMENT: the earlier "sort then check" wording contradicted the pinned `[{A,90},{B,95}] → ok:false` test, and as-given validation is coherent with `sortScaleRows` being a separate exported helper). Errors (any → `{ok:false, errors:[...]}`): empty rows; duplicate letters (case-insensitive); `minPct` not STRICTLY descending as given (rows[i].minPct > rows[i+1].minPct); negative points; `minPct` outside 0–100 or non-finite. No gap errors (ranges are [min, next) chains), lowest row need not be 0.
 - `courseFinalPct`: weighted by each grade's `weightOverride ?? 1` proportion: `Σ(score/maxScore * w) / Σ(w)` × 100; empty → null; `maxScore === 0` grades skipped.
-- `pointsForPct`: find first row (desc) with `minPct <= pct`; interpolate linearly between this row and the next-lower row: `points = row.points + (pct - row.minPct) / (next.minPct - row.minPct) * (next.points - row.points)` when a next row exists and bounds differ, else `row.points`; below all rows → `last.points` clamped ≥ 0; pct ≥ top min → top points.
+- `pointsForPct`: rows sorted desc by minPct. (a) `pct >= rows[0].minPct` → `rows[0].points`. (b) else find first row `i` with `minPct <= pct` (the band FLOOR) and interpolate with the **next-HIGHER row `i-1`** (the band CEILING): `points = rows[i].points + (pct - rows[i].minPct) / (rows[i-1].minPct - rows[i].minPct) * (rows[i-1].points - rows[i].points)`; else if no row matches (pct below every minPct) → lowest row's points clamped ≥ 0. AMENDMENT: original said "next-lower row" — wrong direction (matched rows always have `pct >= row.minPct`, so a lower partner extrapolates and the mapping is discontinuous at band edges; the uniform-scale pinned tests can't distinguish, but non-uniform scales can). This makes the map continuous piecewise-linear: 0→0, band floors interpolate toward the row above (e. 85 → 3.5 between B@80 and A@90; 45 → 0.75 between F@0 and D@60).
 - `computeGpa`: include courses where `!excluded && finalPct !== null && credits > 0`; `gpa = Σ(points * credits) / Σ(credits)`; round with `rounding` decimals (0–3); no included → `{ gpa: null, totalCredits: 0, includedCount: 0 }`.
 - `targetGpaNeeded`: remaining = courses with `finalPct === null && !excluded && credits > 0`; done = included with pct; if no remaining → null; `needed = (target * (doneCredits + remCredits) - Σ(points*credits)_done) / remCredits` (points-space average).
 - `neededOnFinal`: `current = (currentPct * (1 - finalWeight) + needed * finalWeight)` → `needed = (targetPct - currentPct * (1 - finalWeight)) / finalWeight`; band: `needed <= 70 → safe`, `70 < needed <= 100 → borderline`, `> 100 → impossible`; `finalWeight` must be in (0, 1] — invalid → needed NaN guard returns `impossible` with neededPct 0? No: throw-free — return `{ neededPct: 0, band: 'impossible' }` only when weight ≤ 0.
@@ -2519,7 +2545,7 @@ it('validateScale catches duplicates, order, bounds', () => {
 });
 
 it('courseFinalPct weights by override and ignores empty', () => {
-  expect(courseFinalPct([{ score: 8, maxScore: 10, weightOverride: null }, { score: 18, maxScore: 20, weightOverride: null }])).toBeCloseTo(90);
+  expect(courseFinalPct([{ score: 8, maxScore: 10, weightOverride: null }, { score: 18, maxScore: 20, weightOverride: null }])).toBeCloseTo(85); // AMENDED: (0.8+0.9)/2 = 85 (was 90, contradicted the formula and the sibling assertion)
   expect(courseFinalPct([{ score: 50, maxScore: 100, weightOverride: 3 }, { score: 90, maxScore: 100, weightOverride: 1 }])).toBeCloseTo(60);
   expect(courseFinalPct([])).toBeNull();
 });
@@ -2527,8 +2553,8 @@ it('courseFinalPct weights by override and ignores empty', () => {
 it('pointsForPct interpolates between bounds', () => {
   expect(pointsForPct(95, scale)).toBeCloseTo(4);
   expect(pointsForPct(85, scale)).toBeCloseTo(3.5);
-  expect(pointsForPct(5, scale)).toBeCloseTo(0.5);
-  expect(pointsForPct(45, scale)).toBeCloseTo(0.5);
+  expect(pointsForPct(5, scale)).toBeCloseTo(5 / 60, 5);  // AMENDED: F-band interpolates toward D@60 → 5/60 ≈ 0.0833 (was 0.5 — unsatisfiable by any rule consistent with the other four assertions)
+  expect(pointsForPct(45, scale)).toBeCloseTo(0.75, 5);   // AMENDED: 45/60 = 0.75 (was 0.5 — same reason)
   expect(pointsForPct(0, scale)).toBeCloseTo(0);
 });
 
@@ -2538,7 +2564,7 @@ it('computeGpa credit-weights and excludes', () => {
     { id: '2', credits: 4, finalPct: 85, excluded: false },
     { id: '3', credits: 5, finalPct: 70, excluded: true },
   ], scale, 2);
-  expect(r.gpa).toBeCloseTo(3.54, 2); // (4*3 + 3.5*4) / 7
+  expect(r.gpa).toBeCloseTo(3.71, 2); // AMENDED: (4*3 + 3.5*4) / 7 = 3.714… (was 3.54 — contradicted its own comment/formula)
   expect(r.totalCredits).toBe(7);
   expect(r.includedCount).toBe(2);
 });
@@ -2682,12 +2708,14 @@ git commit -m "feat: GPA gauge screen with compact form and scale editor"
 ```ts
 export type TimerStatus = 'idle' | 'running' | 'paused';
 export interface TimerState { status: TimerStatus; courseId: string | null; startedAtMs: number | null; remainingMs: number; targetMs: number; }
-export function elapsedMs(state: TimerState, nowMs: number): number;   // running: (now-startedAt) + accumulated; paused/idle: accumulated
+export function elapsedMs(state: TimerState, nowMs: number): number;   // AMENDED: max(0, targetMs - remainingMs) for ALL statuses (see note below; nowMs kept for API symmetry with the pinned tests)
 export function tick(state: TimerState, nowMs: number): TimerState;    // returns state with remainingMs updated (running only)
 export function finished(state: TimerState, nowMs: number): boolean;
 export function progressOf(state: TimerState): number;                 // 0..1 elapsed/target
 ```
 Store rules: `start(courseId, targetMs)` sets running with `startedAtMs = now`; `pause()` freezes accumulated = target - remaining; `resume()` re-stamps `startedAtMs`; `reset()` → idle with remaining = target; on `finished` → persist `study_sessions` row (`durationMin = Math.round(targetMs/60000)`) via `Haptics.notificationAsync(Success)` + mascot moment (Task 22), status → idle.
+
+> **AMENDMENT (controller, pre-dispatch):** the original `elapsedMs` prose ("running: (now-startedAt) + accumulated") contradicts the pinned test — for `{started:1000, remaining:45000}` at `now=16000` the prose formula yields 30000 but the test asserts **15000**. Tests win (Tasks 9/16/18 precedent). Correct rule: **`elapsedMs = max(0, targetMs - remainingMs)` for ALL statuses** (remainingMs is kept current by the 1s tick and frozen on pause; this is correct across pause/resume because pause freezes remaining and resume re-stamps the anchor without touching remaining). `nowMs` stays in the signature (tests call it) but does not change the value; if lint flags it unused, reference it harmlessly (finite-guard). `finished` KEEPS the anchor projection `max(0, remainingMs - (now - startedAt)) <= 0` for running (pinned test passes; catches expiry between ticks); paused/idle use `remainingMs <= 0`. `progressOf = clamp((target - remainingMs)/target, 0, 1)` (target<=0 → 1 when remaining<=0 else 0). Note the sub-second asymmetry (elapsed trusts remaining as-of-last-tick, finished projects forward) is harmless because ticks run every 1s.
 - Screen: `TimerFace` = `DotArcClock` + `formatCountdown(remaining)`; duration chips `25/45/60/90 MIN` (DSEG7); `SubjectPicker` = horizontal course emoji chips + `NONE`; controls: `▶` start / `⏸` pause / `↻` reset / `■` finish (square hard-shadow buttons); `SessionHistory` = last 10 sessions (course emoji + `45M` DSEG7 + date mono).
 
 - [ ] **Step 1: Failing pure tests**
@@ -2756,23 +2784,30 @@ const mon = new Date(2026, 8, 28).getTime(); // Monday
 const p = { id: 'x', courseId: 'c1', subject: 'Maths', targetMin: 60, period: 'week' as const };
 it('sums sessions inside current week window', () => {
   const r = promiseProgress(p, [
-    { startedAtMs: mon + 3600_000, durationMin: 30 },
-    { startedAtMs: mon - 7 * 86_400_000, durationMin: 45 }, // previous week — excluded
-    { startedAtMs: mon + 7200_000, durationMin: 60 },
+    { startedAtMs: mon + 3600_000, durationMin: 30, courseId: 'c1' },
+    { startedAtMs: mon - 7 * 86_400_000, durationMin: 45, courseId: 'c1' }, // previous week — excluded
+    { startedAtMs: mon + 7200_000, durationMin: 60, courseId: 'c1' },
   ], mon + 86_400_000, 'monday');
   expect(r.doneMin).toBe(90);
   expect(r.ratio).toBe(1); // capped
 });
 it('filters by course when set', () => {
-  const r = promiseProgress(p, [{ startedAtMs: mon + 1000, durationMin: 45, }], mon + 2000, 'monday');
+  const r = promiseProgress(p, [{ startedAtMs: mon + 1000, durationMin: 45, courseId: 'c1' }], mon + 2000, 'monday');
   expect(r.doneMin).toBe(45);
-  const none = promiseProgress({ ...p, courseId: 'other' }, [{ startedAtMs: mon + 1000, durationMin: 45 }], mon + 2000, 'monday');
+  const none = promiseProgress({ ...p, courseId: 'other' }, [{ startedAtMs: mon + 1000, durationMin: 45, courseId: 'c1' }], mon + 2000, 'monday');
   expect(none.doneMin).toBe(0);
 });
 ```
 Session type in this module carries optional `courseId`; add it to the `sessions` param type.
 
 Run FAIL → implement per window rules → PASS.
+
+> **ADJUDICATION (controller, pre-dispatch):**
+> 1. **Pinned tests amended (they were unsatisfiable):** original literals had no `courseId` on sessions, yet the same session must count 45 for `p.courseId='c1'` and 0 for `'other'` — no consistent predicate satisfies both. Sessions now carry `courseId: 'c1'`. **Matching rule: `p.courseId === null || session.courseId === p.courseId`** (promise null = all subjects per window-rules line; a null/undefined-course session counts ONLY toward all-subjects promises — a subject-specific promise never credits anonymous sessions).
+> 2. **Add a day-window pin (prose had none):** sessions on the same local date as `nowMs` count; a session 1 day earlier does not — compare local calendar dates (`toDateId`-style), NOT ms arithmetic (DST-safe). Also pin: week window with `weekStart: 'sunday'` excludes a Monday-start boundary session.
+> 3. **Celebration trigger:** mascot overlay fires on auto-finish (countdown 0) and on manual `■` finish ONLY when a session row is logged (elapsed ≥ 60 s, Task 21 rule); manual < 60 s → no overlay. Touches `src/features/timer/store.ts` (authorized — Task 21 left a `// Task 22` hook): add a `celebration` field (e.g. `{ minutes: number; auto: boolean } | null`) set on logged finishes, cleared on overlay dismiss/timer restart. Overlay content: Mascot blink + `Stamp text="DONE"` + `{minutes}M`; auto-dismiss after 4 s or on tap.
+> 4. **Promise CRUD architecture (plan lists today.tsx AND timer.tsx — de-duplicated):** shared `src/features/promises/{queries,store}.ts` (new, authorized; drizzle-only queries incl. `listSessionsSince(sinceMs)` for progress windows). `today.tsx` PROMISES section = list + inline add (`+`) + long-press delete (Task 19 precedent; no edit flow — disclose). `timer.tsx` = mascot overlay ONLY (no second CRUD UI — disclosure). `weekStart` argument comes from the `week_start` setting (default `'monday'`, `src/features/settings/logic.ts:15`); `promiseProgress` stays pure with the param.
+> 5. **Step 4's "5-min timer" is unreachable** (duration chips are 25/45/60/90): substitute verification = component/unit test proving the wiring (insert session → PromiseBar ratio ticks; finish → celebration set) + bundle smoke. Literal device flow → Task 26 QA (ledger note).
 
 - [ ] **Step 2: PromiseBar + Today wiring** — PROMISES section: `EmptyState glyph="◔" label="no promises — set one"` when empty.
 
@@ -2788,7 +2823,9 @@ git commit -m "feat: study promises with tick-bar progress and mascot moment"
 
 ---
 
-### Task 23: File vault
+### Task 23: File vault — ❌ DROPPED (user decision, pre-dispatch)
+
+> **DROP NOTICE:** The file vault is cut from scope; the vault tab renders a "coming soon" placeholder (`app/(tabs)/vault.tsx`: VAULT heading + `EmptyState glyph="▤" label="coming soon"`). The Task 23 dispatch was cancelled before any code was written; the `files` table stays in the schema (Task 5, migrated) but has no UI. The pre-dispatch adjudication below (commit `99b2fe6`) is retained as history and MAY be revived if vault is ever rescheduled. Downstream amendments: Task 25 no longer zips/copies `files/*`; Task 26 QA item 8 replaced.
 
 **Files:**
 - Create: `src/features/vault/logic.ts`, `src/features/vault/__tests__/logic.test.ts`
@@ -2801,8 +2838,8 @@ git commit -m "feat: study promises with tick-bar progress and mascot moment"
 - Produces (pure):
 ```ts
 export function sandboxFileName(original: string, taken: string[]): string; // dedupe: "report.pdf" → "report (2).pdf"
-export function formatFileSize(bytes: number): string; // "1.2 MB", "340 KB", "12 B"
-export function mimeGlyph(mime: string | null | undefined, name: string): string; // pdf 📄, image 🖼, else 📎
+export function formatFileSize(bytes: number): string; // "1.2 MB", "340 KB", "12 B" — AMENDED: unit ladder B (<1024) → KB (<1024²) → MB (<1024³) → GB; integer for B, otherwise 1 decimal with trailing ".0" stripped (340 KB not 340.0 KB); 1024 → "1 KB", 1048576 → "1 MB"
+export function mimeGlyph(mime: string | null | undefined, name?: string): string; // AMENDED: name optional (default '') so the pinned 1-arg call compiles — pdf 📄, image 🖼, else 📎; precedence: mime 'application/pdf' → 📄, mime 'image/*' → 🖼, else by extension (.pdf → 📄; png/jpg/jpeg/gif/webp/heic → 🖼), else 📎
 ```
 RN flow: `importFile(courseId, category)` → `DocumentPicker.getDocumentAsync({ copyToCacheDirectory: true, type: '*/*' })` → if not canceled: `new File(asset.uri).copy(new File(Paths.document, 'vault', sandboxFileName(name, taken)))` → insert `files` row (`sandboxUri` = dest.uri, size, mime = asset.mimeType).
 `openFile(file)` → `Sharing.isAvailableAsync()` then `Sharing.shareAsync(file.sandboxUri)` (share-sheet = open externally in Expo Go).
@@ -2831,6 +2868,17 @@ it('glyphs by mime then extension', () => {
 ```
 Run FAIL → implement → PASS.
 
+> **ADJUDICATION (controller, pre-dispatch):**
+> 1. **Pinned-test signature defect fixed in the interface, not the test:** `mimeGlyph('application/pdf')` is a pinned 1-arg call but the original interface required `name: string` → would not compile. `name` is now optional (`name?`, default `''`); tests stay byte-verbatim.
+> 2. **Expo v57 API verified against https://docs.expo.dev/versions/v57.0.0/sdk/filesystem/ (controller):** `File`/`Directory`/`Paths` class API exists; `copy(dest)` returns `Promise<void>` (plan snippet's `await` is correct); `create({intermediates, idempotent})` valid on `Directory`; `list()` **throws if the directory does not exist** → ensure vault dir is created (Step 2) BEFORE listing taken names; `file.delete()` / `file.exists` sync. `expo-document-picker@~57.0.2`, `expo-file-system@~57.0.7`, `expo-sharing@~57.0.22` already in package.json (no new deps). Size: `asset.size ?? dest.size`.
+> 3. **`takenNames()` = vault directory listing** (disk is source of truth; DB may hold orphans). Union with DB names is unnecessary — import dedupe only needs disk collisions.
+> 4. **Step 4 device flow → substituted:** unit/component tests (mock `expo-document-picker` + `expo-file-system`: canceled path, dedupe integration, delete removes file then row) + bundle smoke. Literal restart-survival/share-sheet/delete-on-disk → Task 26 QA (ledger note).
+> 5. **`note-edit` modal does not exist yet** (Task 24 creates the route; only the Stack.Screen registration exists) → build a vault-local single-TextInput inline modal (new file authorized, e.g. `components/FileActionModal.tsx`, pattern from GradeForm/EventForm) for DESCRIBE/RENAME.
+> 6. **Navigation:** course folders → category sheet (4 categories + counts) → FileRow list; **ALL FILES folder → flat FileRow list directly** (no category sheet). vault.tsx internal view state (no new routes).
+> 7. **RENAME updates the DB display `name` only** (sandbox file keeps its disk name; `sandboxUri` unchanged) — disclose. **DELETE order: sandbox file first if `exists` (catch → Alert + abort, row untouched), then DB row** — both removed or neither; never a phantom row.
+> 8. **Open:** `Sharing.isAvailableAsync()` false → Alert fallback (disclose). Course FILES section import category: implementer's choice between default `'other'` and pre-pick via category sheet — disclose.
+> 9. Long-press actions DESCRIBE/RENAME/DELETE (plan's `Alert.prompt` is iOS-only → inline modal per plan). DESCRIBE sets/updates `description` (nullable); `Stamp` shows when `description` is set (text of implementer's choosing — disclose).
+
 - [ ] **Step 2: Sandbox copy flow** (exact API):
 ```ts
 import { File, Paths } from 'expo-file-system';
@@ -2857,6 +2905,8 @@ git commit -m "feat: file vault with sandbox copy, folders, file actions"
 ---
 
 ### Task 24: Notes (teacher said / exam tips)
+
+> **ADJUDICATION (controller, pre-dispatch):** `app/note-edit.tsx` does not exist yet (only the `Stack.Screen name="note-edit"` registration at `app/_layout.tsx:42`) → CREATE it as a modal route (pattern: `app/grade/[id].tsx`, params `id` + `courseId`; `id === 'new'` = create mode). `validateNote` lives in NEW pure module `src/features/notes/logic.ts` + tests (authorized file; RN-free, mirrors `grades/logic.ts`). List order: `updatedAt` desc (table has no createdAt). Exactly ONE `+` control in the NOTES section (Task 19's duplicate-`+` defect — do not repeat). DELETE hidden/guarded when `id === 'new'`. Step 4 device flow → substituted: store/component tests + bundle smoke; real persistence check → Task 26 QA. EmptyState label text is yours — disclose.
 
 **Files:**
 - Create: `src/features/notes/queries.ts`, `src/features/notes/store.ts`
@@ -2885,6 +2935,16 @@ git commit -m "feat: course notes with kind stamps and descriptions"
 
 ### Task 25: Backup — ZIP export/import + auto-backup on open
 
+> **ADJUDICATION (controller, pre-dispatch):**
+> 1. **Pinned tests coherent — no amendments.** Edge tests to ADD: `parseBackupJson` with missing/non-object `tables` → null (prose validates "tables object"); `shouldAutoBackup` with `now < last` → false (natural `>=` fallout, pin it).
+> 2. **Pinned FK orders from the schema (14 tables) — importer must follow these exactly:** DELETE children-first: `grades → gradeCategories → scheduleExceptions → schedulePatterns → attendance → events → studySessions → studyPromises → files → notes → courses → terms → gpaScales → settings`. INSERT parents-first: `terms → courses → schedulePatterns → scheduleExceptions → gradeCategories → grades → attendance → events → studySessions → studyPromises → files → notes → gpaScales → settings`. (This satisfies the plan's "delete children first" + safe inserts regardless of whether `PRAGMA foreign_keys` is on.)
+> 3. **Zip→string via fflate `strFromU8`** — Hermes has no `TextDecoder`; do not use it. `zipSync` accepts string values directly.
+> 4. **Importer ignores unknown table keys** in payload (forward-compat; iterate only the 14 known tables in pinned order). Row-level insert failures reject the transaction → rollback → Alert with generic failure (no partial import — the transaction is the guarantee).
+> 5. **Settings keys exist** (`backup_interval_days` default 7, `backup_last_at` default null — `src/features/settings/logic.ts:8-9,19-20`) — read them via settings queries in the auto-backup hook; do NOT assume the zustand store is hydrated at root mount.
+> 6. **Auto-backup hook:** runs once after the migration gate in `app/_layout.tsx`, fire-and-forget `exportBackup({silent:true}).catch(()=>{})` (never blocks or crashes boot); silent path creates `backups/` dir idempotently; same-day file name overwrites (fine). First open with `last_at=null` → exports even when empty (pinned by test — accepted).
+> 7. **Step 5 "device round-trip (critical)" → substituted:** pure tests + importer/exporter tests with mocked `db`/native modules (transaction called; confirm-cancel path aborts without transaction; refreshes called after success) + bundle smoke. THE REAL ROUND-TRIP (export → wipe → import → everything restored) is the #1 item for Task 26 QA (ledger, flagged critical).
+> 8. Export: `Sharing.isAvailableAsync()` false → Alert fallback (consistent with Task 23 adjudication style — vault dropped but rule stands for backup).
+
 **Files:**
 - Create: `src/lib/backup/logic.ts`, `src/lib/backup/__tests__/backup.test.ts`
 - Create: `src/features/backup/exporter.ts`, `src/features/backup/importer.ts`
@@ -2900,8 +2960,8 @@ export function parseBackupJson(json: string): { manifest: BackupManifest; table
 export function shouldAutoBackup(lastAtMs: number | null, intervalDays: number, nowMs: number): boolean;
 ```
 Rules: `parseBackupJson` validates `app === 'school-planner'` + `version === 1` + tables object; unknown version → null (show error, no partial import). `shouldAutoBackup`: `lastAt === null` → true only if any data exists? No — true (first backup); `now - last >= intervalDays*86400000` → true.
-- RN exporter: gather every table via `db.select().from(t)`; JSON → `zipSync({ 'data.json': str, 'files/<name>': bytes... })` (vault files read via `new File(uri).bytes()`); write `backup-<dateId>.zip` under `Paths.document/backups/`; `Sharing.shareAsync(uri, { mimeType: 'application/zip' })`; then `settings.backup_last_at = now`.
-- RN importer: pick `.zip` via DocumentPicker → `unzipSync` → `parseBackupJson` → confirm `Alert.alert('Replace all data?', …)` → in ONE drizzle transaction: delete all rows of every table (FK order: children first) → insert rows → copy `files/*` back into vault dir (rewrite `sandboxUri`) → relaunch stores (`refresh()` all stores) + `refreshReminders()`.
+- RN exporter: gather every table via `db.select().from(t)`; JSON → `zipSync({ 'data.json': str })` (no `files/*` — vault dropped, Task 23 DROP NOTICE: the `files` table serializes as an always-empty array like every other table); write `backup-<dateId>.zip` under `Paths.document/backups/`; `Sharing.shareAsync(uri, { mimeType: 'application/zip' })`; then `settings.backup_last_at = now`.
+- RN importer: pick `.zip` via DocumentPicker → `unzipSync` → `parseBackupJson` → confirm `Alert.alert('Replace all data?', …)` → in ONE drizzle transaction: delete all rows of every table (FK order: children first) → insert rows → relaunch stores (`refresh()` all stores) + `refreshReminders()` (no vault dir copy — Task 23 dropped).
 - Settings BACKUP section: `EXPORT ZIP` button (square icon + label), `IMPORT` (danger-stamped confirm), interval chips 1/3/7/14, `LAST: <dateId>` in mono.
 - App open hook (root layout after migration): `if (shouldAutoBackup(...)) { await exportBackup({ silent: true }); }` — silent = write zip file to `backups/` without sharing sheet.
 
@@ -2930,11 +2990,11 @@ it('auto-backup interval logic', () => {
 Run FAIL → implement → PASS.
 
 - [ ] **Step 2: exporter** — gather tables, zip, write, share, stamp `backup_last_at`.
-- [ ] **Step 3: importer** — full flow with confirm + transaction + file restore + store refresh.
+- [ ] **Step 3: importer** — full flow with confirm + transaction (pinned FK orders) + store refresh (no file restore — Task 23 dropped).
 - [ ] **Step 4: settings + auto-backup wiring.**
 - [ ] **Step 5: Gates + device round-trip (critical)**
 
-Gates pass. Device: create courses + grades + files → EXPORT ZIP (share sheet opens) → DELETE all data (or reinstall app data via import into wiped state: import with confirm) → everything restored (courses, grades, settings, files openable).
+Gates pass. Device: create courses + grades + notes → EXPORT ZIP (share sheet opens) → import into a wiped state (confirm dialog) → everything restored (courses, grades, notes, settings). Real round-trip deferred to Task 26 QA (adjudication #7 — flagged CRITICAL).
 
 - [ ] **Step 6: Commit**
 ```bash
@@ -2946,6 +3006,13 @@ git commit -m "feat: ZIP backup export/import with auto-backup on open"
 
 ### Task 26: Polish + full QA pass
 
+> **ADJUDICATION (controller, pre-dispatch):**
+> 1. **Step 4 device QA checklist cannot be executed here (no device/adb).** Substitution: (a) static verification pass over each of the 12 items — code evidence or existing tests where possible (e.g. notification scheduling = reminders tests, settings persistence = settings store tests, backup round-trip = importer/exporter order tests, timer→mascot = celebration tests); (b) bundle smoke; (c) the 12-item checklist is reproduced VERBATIM in the task report as a **user QA pass for Expo Go** (the established feedback loop: user tests → I fix). Record per-item status as `static-verified` / `covered-by-tests` / `user-check` — never claim a live run.
+> 2. **Empty-state copy list:** drop `"no files"` (Task 23 vault dropped). Vault tab keeps its coming-soon placeholder (do NOT convert it to EmptyState).
+> 3. **Motion audit:** grain overlay already `pointerEvents="none"` (GrainOverlay.tsx:18) — verify only. DayDetail morph uses `withSpring damping 24` (Task 14, already approved) — plan's "damping 20" value is SUPERSEDED: keep 24, do not churn. Tab-switch eyeball check → user QA.
+> 4. **Haptics adds (plan Step 2):** `selectionAsync` inside shared `FilterChip`/`SegmentedChips` primitives (one edit covers all chip call sites) + weekday chips IF they don't use those primitives + inline stepper +/- controls where locatable by grep (disclose skips); `impactAsync(Medium)` on timer start/pause; `notificationAsync(Success)` on backup export success (timer finish already shipped). All with `.catch(() => {})`.
+> 5. Step 5 fix pass: each fix keeps the pristine gate (`npx jest && npx tsc --noEmit && npx eslint .` 0 errors 0 warnings) + targeted retest.
+
 **Files:**
 - Modify: across `src/features/**` (empty states, haptics, copy), `app/(tabs)/*`
 
@@ -2953,13 +3020,13 @@ git commit -m "feat: ZIP backup export/import with auto-backup on open"
 - Consumes: everything.
 - Produces: consistent empty states on every screen, haptics on chip/stepper/timer events, motion audit, QA checklist executed and results reported.
 
-- [ ] **Step 1: Empty-state sweep** — every screen/section has `<EmptyState glyph label>` with mono lowercase copy (`"no courses yet — tap +"`, `"nothing due"`, `"no files"`, `"not marked yet"`, `"no promises — set one"`, `"no classes today"`, `"no grades"`).
+- [ ] **Step 1: Empty-state sweep** — every screen/section has `<EmptyState glyph label>` with mono lowercase copy (`"no courses yet — tap +"`, `"nothing due"`, `"not marked yet"`, `"no promises — set one"`, `"no classes today"`, `"no grades"`); vault keeps its coming-soon placeholder (not an EmptyState).
 
 - [ ] **Step 2: Haptics sweep** — `Haptics.selectionAsync()` on FilterChip/SegmentedChips/weekday chips/attendance buttons; `impactAsync(Medium)` on timer start/pause; `notificationAsync(Success)` on timer finish, backup export success.
 
-- [ ] **Step 3: Motion audit** — all presses use press-depth (BrutCard/SquareIconButton); DayDetail morph springy (`withSpring damping 20`); no layout jank: verify tab switch ≤ 16ms dropped frames by eye; grain overlay does not intercept touches (`pointerEvents="none"` — verify by tapping under it).
+- [ ] **Step 3: Motion audit** — all presses use press-depth (BrutCard/SquareIconButton); DayDetail morph springy (`withSpring damping 24` — Task 14 value, adjudication supersedes the earlier "20"); no layout jank: eyeball check deferred to user QA; grain overlay does not intercept touches (`pointerEvents="none"` — verify statically).
 
-- [ ] **Step 4: Full QA checklist (device, Expo Go)** — run and record results in the task report:
+- [ ] **Step 4: QA checklist (no device here — static-verify + tests, then hand verbatim checklist to user for Expo Go run, per adjudication #1; record `static-verified` / `covered-by-tests` / `user-check` per item in the task report)**
   1. Cold start → tabs, no red screens, migration ran (existing data intact).
   2. Courses: CRUD + emoji/color/pattern persistence.
   3. Schedule: pattern create/edit/delete; Today hero counts down; class goes active → tick bar → ends.
@@ -2967,7 +3034,7 @@ git commit -m "feat: ZIP backup export/import with auto-backup on open"
   5. Events: create exam `T-6D` chip + description on Today; done stamp; notification scheduled (check Android notification shade).
   6. GPA: grades → final % → gauge; exclude toggles; rounding; scale editor validation; target + needed-on-final bands.
   7. Timer: 1-min run → arc depletes → haptic + mascot + session logged; promise bar advanced.
-  8. Vault: import PDF → open → describe → delete.
+  8. Vault: tab renders coming-soon placeholder (Task 23 dropped — no import flows).
   9. Notes: add exam tip → appears.
   10. Backup: export ZIP → import (confirm) → data restored.
   11. Settings: values persist across kill/relaunch.
@@ -2986,7 +3053,7 @@ git commit -m "feat: polish pass — empty states, haptics, motion, QA fixes"
 
 ## Plan Self-Review
 
-**Spec coverage:** Sections 1–10 of the spec map to tasks: architecture/scaffold (T1–T5), fonts (T2), design system incl. grain/press-depth/primitives/nav (T3–T4), all 14 tables (T5), courses (T6), settings (T7), schedule+Today+reminders (T8–T12), calendar+filters+day detail+attendance (T13–T15), events+T-minus+agenda (T16–T17), GPA engine/grades/screen/scale editor (T18–T20), timer (T21), promises+mascot (T22), vault (T23), notes (T24), backup (T25), polish+haptics+QA (T26). Spec §7 research verdicts are baked into T13 (flash-calendar theme/children), T11 (animata tick bar exact constants), T20 (custom SVG controls), T1 (no rejected deps). Spec §10 risks: Doto jitter (T2 smoke), Skia shader fallback (T3), fflate smoke (T25), flash-calendar internals read installed types (T14).
+**Spec coverage:** Sections 1–10 of the spec map to tasks: architecture/scaffold (T1–T5), fonts (T2), design system incl. grain/press-depth/primitives/nav (T3–T4), all 14 tables (T5), courses (T6), settings (T7), schedule+Today+reminders (T8–T12), calendar+filters+day detail+attendance (T13–T15), events+T-minus+agenda (T16–T17), GPA engine/grades/screen/scale editor (T18–T20), timer (T21), promises+mascot (T22), vault (T23 — DROPPED pre-dispatch, coming-soon tab), notes (T24), backup (T25), polish+haptics+QA (T26). Spec §7 research verdicts are baked into T13 (flash-calendar theme/children), T11 (animata tick bar exact constants), T20 (custom SVG controls), T1 (no rejected deps). Spec §10 risks: Doto jitter (T2 smoke), Skia shader fallback (T3), fflate smoke (T25), flash-calendar internals read installed types (T14).
 
 **Placeholders:** none — every step carries code, commands, or explicit test bodies. T14 and T11 include explicit "read installed types / correct this math" directives with the exact final behavior specified (not TBD).
 
