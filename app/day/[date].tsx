@@ -214,14 +214,24 @@ export default function DayScreen() {
     const target = days[chipIndex];
     clearHover(hover);
     if (!target || target === dateId) return;
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-    playSound('tick');
-    void updateEvent(eventId, { dueAtMs: moveDueToDay(dueAtMs, target) }).then(load).catch(() => {});
+    // Feedback only after the write lands — otherwise a failed reschedule
+    // congratulates the user for nothing.
+    void updateEvent(eventId, { dueAtMs: moveDueToDay(dueAtMs, target) })
+      .then(() => {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+        playSound('tick');
+        return load();
+      })
+      .catch(() => {});
   }, [days, dateId, hover, updateEvent, load]);
 
   const mark = useCallback(async (courseId: string, status: AttendanceStatus) => {
-    await upsertAttendance(courseId, dateId, status);
-    setAttendance(await listAttendanceInRange(dateId, dateId));
+    // Degrade silently like every other write: on failure `attendance` keeps its
+    // old value, so the stamp/buttons still show what the database actually holds.
+    try {
+      await upsertAttendance(courseId, dateId, status);
+      setAttendance(await listAttendanceInRange(dateId, dateId));
+    } catch {}
   }, [dateId]);
 
   const d = parseDateId(dateId);

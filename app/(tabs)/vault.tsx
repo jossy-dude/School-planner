@@ -4,6 +4,7 @@ import { router, useFocusEffect } from 'expo-router';
 import { useCoursesStore } from '@/features/courses/store';
 import { confirmDeleteFile, openStoredFile } from '@/features/files/actions';
 import { useFilesStore } from '@/features/files/store';
+import { useShallow } from 'zustand/react/shallow';
 import { SubjectFolder } from '@/features/vault/components/SubjectFolder';
 import { CardStack, StackCardItem } from '@/ui/CardStack';
 import { EmptyState, SquareIconButton } from '@/ui/primitives';
@@ -15,7 +16,9 @@ const MISC_STACK_HEIGHT = 148;
 
 function MiscFiles() {
   const [open, setOpen] = useState(false);
-  const files = useFilesStore((s) => s.all.filter((f) => f.courseId === null));
+  // useShallow: filter() hands back a fresh array, and zustand v5 passes the raw
+  // selector snapshot to useSyncExternalStore — an uncached array loops forever.
+  const files = useFilesStore(useShallow((s) => s.all.filter((f) => f.courseId === null)));
   const removeFile = useFilesStore((s) => s.remove);
 
   if (files.length === 0) return null;

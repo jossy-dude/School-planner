@@ -1,3 +1,4 @@
+import { useCallback } from 'react';
 import { create } from 'zustand';
 import { Note } from '@/db/schema';
 import { NoteDraft, NotePatch } from './logic';
@@ -67,10 +68,13 @@ const EMPTY_NOTES: Note[] = [];
 export function useCourseNotesCache(courseId: string) {
   const rows = useNotesStore((s) => s.byCourse[courseId]);
   const refreshCourse = useNotesStore((s) => s.refreshCourse);
+  // useCallback: SubjectFolder refetches from an effect keyed on `refresh`, so a
+  // fresh closure per render would refetch (and re-render) forever.
+  const refresh = useCallback(() => refreshCourse(courseId), [refreshCourse, courseId]);
   return {
     notes: rows ?? EMPTY_NOTES,
     loaded: rows !== undefined,
-    refresh: () => refreshCourse(courseId),
+    refresh,
   };
 }
 

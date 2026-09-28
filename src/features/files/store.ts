@@ -1,3 +1,4 @@
+import { useCallback } from 'react';
 import { create } from 'zustand';
 import { StoredFile } from '@/db/schema';
 import { FileDraft } from './logic';
@@ -55,9 +56,12 @@ const EMPTY_FILES: StoredFile[] = [];
 export function useCourseFiles(courseId: string) {
   const rows = useFilesStore((s) => s.byCourse[courseId]);
   const refreshCourse = useFilesStore((s) => s.refreshCourse);
+  // useCallback: callers refetch from an effect keyed on `refresh`. A fresh
+  // closure every render would re-run that effect forever once a fetch lands.
+  const refresh = useCallback(() => refreshCourse(courseId), [refreshCourse, courseId]);
   return {
     files: rows ?? EMPTY_FILES,
     loaded: rows !== undefined,
-    refresh: () => refreshCourse(courseId),
+    refresh,
   };
 }
