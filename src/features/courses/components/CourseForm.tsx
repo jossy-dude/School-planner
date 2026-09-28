@@ -3,7 +3,7 @@ import * as Haptics from 'expo-haptics';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { router } from 'expo-router';
 import { Course } from '@/db/schema';
-import { SquareIconButton } from '@/ui/primitives';
+import { BlobBackButton } from '@/ui/BlobBackButton';
 import { colors, fontFamilies, hardShadow, radius } from '@/ui/tokens';
 import { validateCourse } from '../logic';
 import { useCoursesStore } from '../store';
@@ -92,7 +92,7 @@ export function CourseForm({ mode, course, onDone }: { mode: 'create' | 'edit'; 
       keyboardShouldPersistTaps="handled"
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-        <SquareIconButton glyph="←" onPress={dismiss} size={40} />
+        <BlobBackButton onPress={dismiss} size={40} />
         <Text style={{ fontFamily: fontFamilies.heading, fontSize: 16, color: colors.ink }}>
           {mode === 'create' ? 'NEW COURSE' : 'EDIT COURSE'}
         </Text>

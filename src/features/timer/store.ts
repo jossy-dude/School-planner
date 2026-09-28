@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { playSound } from '@/lib/sound';
 import * as Haptics from 'expo-haptics';
 import { StudySession } from '@/db/schema';
 import {
@@ -44,6 +45,7 @@ interface TimerStore {
 }
 
 const DEFAULT_TARGET_MS = 25 * 60_000;
+let lastTickSecond: number | null = null;
 
 async function logSession(courseId: string | null, startedAtMs: number, durationMin: number): Promise<void> {
   try {
@@ -63,11 +65,13 @@ export const useTimerStore = create<TimerStore>((set, get) => ({
   actions: {
     start: (courseId, targetMs) => {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+      playSound('start');
       const now = Date.now();
       set({ state: startState(courseId, targetMs, now), nowMs: now, sessionStartMs: now, celebration: null });
     },
     pause: () => {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+      playSound('tick');
       set({ state: pauseState(get().state, Date.now()), nowMs: Date.now() });
     },
     resume: () => set({ state: resumeState(get().state, Date.now()), nowMs: Date.now() }),
@@ -102,6 +106,7 @@ export const useTimerStore = create<TimerStore>((set, get) => ({
       });
       if (logged) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+        playSound('done');
         await logSession(s.courseId, startedAtMs, minutes);
         await get().actions.refreshSessions();
       }
@@ -113,6 +118,12 @@ export const useTimerStore = create<TimerStore>((set, get) => ({
       if (s.status !== 'running' || get().finishing) return;
       const next = tickLogic(s, nowMs);
       set({ state: next });
+      // Soft ticks through the final five seconds, once per whole second.
+      const secLeft = Math.ceil(next.remainingMs / 1000);
+      if (secLeft >= 1 && secLeft <= 5 && secLeft !== lastTickSecond) {
+        lastTickSecond = secLeft;
+        playSound('tick');
+      }
       if (!finished(next, nowMs)) return;
       // Countdown hit zero: persist the full target, celebrate, then re-arm.
       set({ finishing: true });
@@ -120,6 +131,8 @@ export const useTimerStore = create<TimerStore>((set, get) => ({
       const minutes = Math.round(next.targetMs / 60_000);
       await logSession(next.courseId, startedAtMs, minutes);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      playSound('done');
+      lastTickSecond = null;
       set({
         state: resetState(next),
         sessionStartMs: null,

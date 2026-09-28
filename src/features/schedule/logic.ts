@@ -118,7 +118,7 @@ export function validateException(input: {
   return { ok: true };
 }
 
-const WEEKDAY_SHORT = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+export const WEEKDAY_SHORT = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
 
 export function patternLabel(pattern: { weekday: number; startTime: string; endTime: string }): string {
   return `${WEEKDAY_SHORT[pattern.weekday] ?? '?'} ${pattern.startTime}–${pattern.endTime}`;

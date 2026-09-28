@@ -1,4 +1,4 @@
-import { tMinusLabel, validateEvent } from '../logic';
+import { moveDueToDay, tMinusLabel, validateEvent } from '../logic';
 const now = new Date(2026, 8, 25, 8).getTime();
 it('labels ranges', () => {
   expect(tMinusLabel(now + 6 * 86_400_000, now)).toBe('T-6D');
@@ -12,4 +12,13 @@ it('validates title and due', () => {
   expect(validateEvent({ title: '', dueAtMs: now }).ok).toBe(false);
   expect(validateEvent({ title: 'Essay' }).ok).toBe(false);
   expect(validateEvent({ title: 'Essay', dueAtMs: now, kind: 'bogus' as never }).ok).toBe(false);
+});
+
+describe('moveDueToDay', () => {
+  it('keeps the time of day and swaps the date', () => {
+    const due = new Date(2024, 4, 15, 14, 30).getTime();
+    const moved = new Date(moveDueToDay(due, '2024-05-18'));
+    expect([moved.getFullYear(), moved.getMonth(), moved.getDate()]).toEqual([2024, 4, 18]);
+    expect([moved.getHours(), moved.getMinutes()]).toEqual([14, 30]);
+  });
 });

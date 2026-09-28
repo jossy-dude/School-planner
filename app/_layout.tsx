@@ -8,7 +8,7 @@ import { refreshReminders } from '@/features/reminders/refresh';
 import { runAutoBackup } from '@/features/backup/auto';
 import { useFontsLoaded } from '@/ui/fonts';
 import { BootErrorScreen } from '@/ui/BootErrorScreen';
-import { GrainOverlay } from '@/ui/GrainOverlay';
+import { PaperTexture } from '@/ui/PaperTexture';
 import { colors } from '@/ui/tokens';
 
 // Module-level one-shot: survives StrictMode's double-mounted effect in dev,
@@ -57,11 +57,13 @@ export default function RootLayout() {
         <Stack.Screen name="event/[id]" options={{ presentation: 'modal' }} />
         <Stack.Screen name="grade/[id]" options={{ presentation: 'modal' }} />
         <Stack.Screen name="note-edit" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="file-add" options={{ presentation: 'modal' }} />
         <Stack.Screen name="exception-edit" options={{ presentation: 'modal' }} />
         <Stack.Screen name="course/[id]" />
+        <Stack.Screen name="day/[date]" />
         <Stack.Screen name="settings" />
       </Stack>
-      <GrainOverlay />
+      <PaperTexture />
     </GestureHandlerRootView>
   );
 }

@@ -8,6 +8,7 @@ import { importBackup } from '@/features/backup/importer';
 import { notificationsGranted } from '@/features/reminders/notify';
 import { toDateId } from '@/lib/schedule';
 import { BrutCard } from '@/ui/BrutCard';
+import { BlobBackButton } from '@/ui/BlobBackButton';
 import { FilterChip, SegmentedChips, SquareIconButton } from '@/ui/primitives';
 import { colors, fontFamilies } from '@/ui/tokens';
 import { useSettings, useSettingsStore } from '@/features/settings/store';
@@ -65,7 +66,7 @@ export default function SettingsScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.paper, padding: 16 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-        <SquareIconButton glyph="←" onPress={() => router.back()} />
+        <BlobBackButton onPress={() => router.back()} />
         <Text style={{ fontFamily: fontFamilies.heading, fontSize: 18, color: colors.ink }}>SETTINGS</Text>
       </View>
       <ScrollView contentContainerStyle={{ paddingBottom: 32 }}>
@@ -85,6 +86,15 @@ export default function SettingsScreen() {
           <Row label="DAILY GOAL · MIN">
             <Stepper value={settings.study_goal_min} step={30} min={0} max={720}
               onChange={(v) => void set('study_goal_min', v)} />
+          </Row>
+        </Section>
+        <Section title="SOUND">
+          <Row label="EFFECTS">
+            <View style={{ width: 140 }}>
+              <SegmentedChips options={['ON', 'OFF']}
+                value={settings.sound_enabled ? 'ON' : 'OFF'}
+                onChange={(v) => void set('sound_enabled', v === 'ON')} />
+            </View>
           </Row>
         </Section>
         <Section title="WEEK">

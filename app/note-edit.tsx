@@ -6,13 +6,14 @@ import { Note } from '@/db/schema';
 import { getNoteById } from '@/features/notes/queries';
 import { NoteKind, validateNote } from '@/features/notes/logic';
 import { useNotes } from '@/features/notes/store';
-import { EmptyState, SegmentedChips, SquareIconButton } from '@/ui/primitives';
+import { EmptyState, SegmentedChips } from '@/ui/primitives';
+import { BlobBackButton } from '@/ui/BlobBackButton';
 import { colors, fontFamilies, hardShadow, radius } from '@/ui/tokens';
 
 function Header({ title }: { title: string }) {
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-      <SquareIconButton glyph="←" onPress={() => router.back()} size={40} />
+      <BlobBackButton onPress={() => router.back()} size={40} />
       <Text style={{ fontFamily: fontFamilies.heading, fontSize: 16, color: colors.ink }}>{title}</Text>
     </View>
   );

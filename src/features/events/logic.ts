@@ -70,3 +70,12 @@ export function dueAtToParts(ms: number): { dateId: string; time: string } {
   const pad = (n: number) => String(n).padStart(2, '0');
   return { dateId: toDateId(d), time: `${pad(d.getHours())}:${pad(d.getMinutes())}` };
 }
+
+// Moves an event to another calendar day, keeping its local time of day — used
+// by the full-page day view's drag-to-reschedule.
+export function moveDueToDay(dueAtMs: number, targetDateId: string): number {
+  const src = new Date(dueAtMs);
+  const target = parseDateId(targetDateId);
+  target.setHours(src.getHours(), src.getMinutes(), src.getSeconds(), src.getMilliseconds());
+  return target.getTime();
+}

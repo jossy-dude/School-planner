@@ -1,7 +1,7 @@
 import { useCallback, useEffect } from 'react';
 import * as Haptics from 'expo-haptics';
 import { Pressable, ScrollView, Text, View } from 'react-native';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCoursesStore } from '@/features/courses/store';
 import { CelebrationOverlay } from '@/features/timer/components/CelebrationOverlay';
 import { SessionHistory } from '@/features/timer/components/SessionHistory';
@@ -52,6 +52,7 @@ function DurationChips({ targetMs, disabled, onSelect }: { targetMs: number; dis
 }
 
 export default function TimerScreen() {
+  const { courseId: courseIdParam } = useLocalSearchParams<{ courseId?: string }>();
   const state = useTimerStore((s) => s.state);
   const nowMs = useTimerStore((s) => s.nowMs);
   const sessions = useTimerStore((s) => s.sessions);
@@ -66,6 +67,16 @@ export default function TimerScreen() {
       void actions.refreshSessions().catch(() => {});
     }, [refreshCourses, actions]),
   );
+
+  // Deep-linked from Home's "start focus timer" quick action: preselect the
+  // course it was launched for, but never steal the subject out from under an
+  // already-running session (read live status via getState so this effect
+  // only re-fires when a *new* courseId arrives, not on every status change).
+  useEffect(() => {
+    if (!courseIdParam) return;
+    if (useTimerStore.getState().state.status !== 'idle') return;
+    actions.select(courseIdParam);
+  }, [courseIdParam, actions]);
 
   // Store-backed tick: one subscription drives the per-second re-render.
   // Immediate tick on mount catches up a countdown left running off-screen.

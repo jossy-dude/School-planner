@@ -49,3 +49,13 @@ it('dayDots keeps only active categories plus the absence dot', () => {
     { color: '#C8352A', shape: 'circle' },
   ]);
 });
+
+describe('dayDots class colors', () => {
+  const info = { classCount: 2, hasAbsence: false, examCount: 0, taskCount: 0, clubCount: 0 };
+  it('uses course colors for class dots when supplied', () => {
+    expect(dayDots(info, [], ['#ff0000', '#00ff00']).map((d) => d.color)).toEqual(['#ff0000', '#00ff00']);
+  });
+  it('falls back to ink when a color is missing', () => {
+    expect(dayDots(info, [], ['#ff0000']).map((d) => d.color)[1]).toBe('#141414');
+  });
+});

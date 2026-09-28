@@ -8,6 +8,7 @@ import { refreshReminders } from '@/features/reminders/refresh';
 import { useCoursesStore } from '@/features/courses/store';
 import { useScheduleStore } from '@/features/schedule/store';
 import { useEventsStore } from '@/features/events/store';
+import { useFilesStore } from '@/features/files/store';
 import { useGradesStore } from '@/features/grades/store';
 import { useNotesStore } from '@/features/notes/store';
 import { useGpaStore } from '@/features/gpa/store';
@@ -72,6 +73,11 @@ function refreshAfterImport(): void {
   useCoursesStore.getState().refresh().catch(() => {});
   useScheduleStore.getState().refresh().catch(() => {});
   useEventsStore.getState().refresh().catch(() => {});
+  // Note: only the `files` table's metadata round-trips through a backup zip —
+  // the on-disk bytes at each row's sandboxUri live solely on the device that
+  // stored them, so restored rows on another device open to a "not found"
+  // state (handled in the Vault's open/share flow) until re-added.
+  useFilesStore.getState().refreshAll().catch(() => {});
   const grades = useGradesStore.getState();
   if (grades.courseId) grades.refresh(grades.courseId).catch(() => {});
   const notes = useNotesStore.getState();

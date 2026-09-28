@@ -1,16 +1,10 @@
 import { Calendar, toDateId, useCalendar } from '@marceloterreiro/flash-calendar';
-import type { CalendarTheme } from '@marceloterreiro/flash-calendar';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { LayoutChangeEvent } from 'react-native';
 import { ScrollView, Text, View } from 'react-native';
-import Animated, { useAnimatedRef } from 'react-native-reanimated';
 import { router, useFocusEffect } from 'expo-router';
 import type { Attendance } from '@/db/schema';
-import type { AttendanceStatus } from '@/features/attendance/logic';
-import { listAttendanceInRange, upsertAttendance } from '@/features/attendance/queries';
+import { listAttendanceInRange } from '@/features/attendance/queries';
 import { DayCell } from '@/features/calendar/components/DayCell';
-import type { CellFrame } from '@/features/calendar/components/DayCell';
-import { DayDetail } from '@/features/calendar/components/DayDetail';
 import type { CalendarFilter, DotEvent } from '@/features/calendar/dots';
 import { dayDotInfo, dayDots } from '@/features/calendar/dots';
 import { paperTheme } from '@/features/calendar/theme';
@@ -24,17 +18,12 @@ import { colors, fontFamilies } from '@/ui/tokens';
 
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
-type ItemDayTheme = NonNullable<CalendarTheme['itemDay']>;
-type ItemDayStateFn = NonNullable<ItemDayTheme['idle']>;
-
 export default function CalendarScreen() {
   const { week_start } = useSettings();
   const today = useMemo(() => toDateId(new Date()), []);
   const [selected, setSelected] = useState(today);
   const [monthId, setMonthId] = useState(today);
   const [filters, setFilters] = useState<CalendarFilter[]>([]);
-  const [detail, setDetail] = useState<{ dateId: string; frame: CellFrame | null } | null>(null);
-  const [size, setSize] = useState({ width: 0, height: 0 });
   const [monthEvents, setMonthEvents] = useState<DotEvent[]>([]);
   const [monthAttendance, setMonthAttendance] = useState<Attendance[]>([]);
   const loadedRangeRef = useRef<string | null>(null);
@@ -59,23 +48,6 @@ export default function CalendarScreen() {
     calendarActiveDateRanges: activeRanges,
   });
 
-  // Dim out-of-month days while keeping them pressable (they navigate months).
-  const itemDayTheme = useMemo<CalendarTheme['itemDay']>(() => {
-    const base = theme.itemDay;
-    if (!base) return base;
-    const withOutside = (pick: ItemDayStateFn) =>
-      (p: Parameters<ItemDayStateFn>[0]) => {
-        const out = pick(p);
-        if (!p.isDifferentMonth) return out;
-        return { ...out, content: { ...out.content, color: colors.ink15 } };
-      };
-    return {
-      ...base,
-      ...(base.idle ? { idle: withOutside(base.idle) } : {}),
-      ...(base.today ? { today: withOutside(base.today) } : {}),
-    };
-  }, [theme]);
-
   const gridStart = weeksList[0]?.[0]?.date ?? null;
   const lastWeek = weeksList[weeksList.length - 1];
   const gridEnd = lastWeek?.[lastWeek.length - 1]?.date ?? null;
@@ -88,12 +60,6 @@ export default function CalendarScreen() {
     if (rangeIdStart === null || rangeIdEnd === null) return [];
     return listAttendanceInRange(rangeIdStart, rangeIdEnd);
   }, [rangeIdStart, rangeIdEnd]);
-
-  const markAttendance = useCallback((courseId: string, date: string, status: AttendanceStatus) =>
-    (async () => {
-      await upsertAttendance(courseId, date, status);
-      setMonthAttendance(await loadAttendance());
-    })(), [loadAttendance]);
 
   // Reloads when the visible range changes (month nav) and when focus returns
   // (e.g. after the event modal closes), so new event dots show up immediately.
@@ -157,6 +123,8 @@ export default function CalendarScreen() {
     return m;
   }, [attendanceByDay]);
 
+  const courseColor = useMemo(() => new Map(courses.map((c) => [c.id, c.color])), [courses]);
+
   const occOn = useCallback(
     (dateId: string) => occurrencesOnDay(patterns, exceptions, dateId),
     [patterns, exceptions],
@@ -177,26 +145,14 @@ export default function CalendarScreen() {
   }, []);
   const showAll = useCallback(() => setFilters([]), []);
 
-  const handleDayPress = useCallback((id: string, frame: CellFrame | null) => {
+  const handleDayPress = useCallback((id: string) => {
     setSelected(id);
     setMonthId(id);
-    setDetail({ dateId: id, frame });
+    router.push({ pathname: '/day/[date]', params: { date: id } });
   }, []);
-  const closeDetail = useCallback(() => setDetail(null), []);
-
-  const onRootLayout = useCallback((e: LayoutChangeEvent) => {
-    const { width, height } = e.nativeEvent.layout;
-    setSize((prev) => (prev.width === width && prev.height === height ? prev : { width, height }));
-  }, []);
-
-  const rootRef = useAnimatedRef<Animated.View>();
 
   return (
-    <Animated.View
-      ref={rootRef}
-      onLayout={onRootLayout}
-      style={{ flex: 1, backgroundColor: colors.paper, padding: 16 }}
-    >
+    <View style={{ flex: 1, backgroundColor: colors.paper, padding: 16 }}>
       <View style={{
         flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8,
       }}>
@@ -261,36 +217,21 @@ export default function CalendarScreen() {
                 eventsByDay.get(day.id) ?? [],
                 absencesByDay.get(day.id) ?? [],
               );
+              const classColors = occOn(day.id).map((o) => courseColor.get(o.courseId) ?? colors.ink);
               return (
                 <DayCell
                   key={day.id}
                   day={day}
-                  theme={itemDayTheme}
-                  dots={dayDots(info, filters)}
+                  info={info}
+                  dots={dayDots(info, filters, classColors)}
+                  selected={day.id === selected}
                   onDayPress={handleDayPress}
-                  rootRef={rootRef}
                 />
               );
             })}
           </Calendar.Row.Week>
         ))}
       </View>
-      {detail ? (
-        <DayDetail
-          dateId={detail.dateId}
-          sourceFrame={detail.frame}
-          containerWidth={size.width}
-          containerHeight={size.height}
-          courses={courses}
-          occurrences={occOn(detail.dateId)}
-          events={eventsByDay.get(detail.dateId) ?? []}
-          absences={absencesByDay.get(detail.dateId) ?? []}
-          attendance={attendanceByDay.get(detail.dateId) ?? []}
-          filters={filters}
-          onClose={closeDetail}
-          onMarkAttendance={markAttendance}
-        />
-      ) : null}
-    </Animated.View>
+    </View>
   );
 }

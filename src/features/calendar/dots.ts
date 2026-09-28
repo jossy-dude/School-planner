@@ -53,12 +53,19 @@ const TASK_DOT: DayDotSpec = { color: colors.ink70, shape: 'circle' };
 const CLUB_DOT: DayDotSpec = { color: colors.ink40, shape: 'circle' };
 const ABSENCE_DOT: DayDotSpec = { color: colors.danger, shape: 'circle' };
 
-export function dayDots(info: DotInfo, filters: readonly CalendarFilter[]): DayDotSpec[] {
+export function dayDots(
+  info: DotInfo,
+  filters: readonly CalendarFilter[],
+  classColors: readonly string[] = [],
+): DayDotSpec[] {
   const all = filters.length === 0;
   const on = (f: CalendarFilter) => all || filters.includes(f);
   const out: DayDotSpec[] = [];
   if (on('CLASSES')) {
-    for (let i = 0; i < Math.min(info.classCount, MAX_CLASS_DOTS); i += 1) out.push(CLASS_DOT);
+    for (let i = 0; i < Math.min(info.classCount, MAX_CLASS_DOTS); i += 1) {
+      const color = classColors[i];
+      out.push(color ? { color, shape: 'circle' } : CLASS_DOT);
+    }
   }
   if (on('EXAMS') && info.examCount > 0) out.push(EXAM_DOT);
   if (on('TASKS') && info.taskCount > 0) out.push(TASK_DOT);

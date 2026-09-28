@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { Pressable, Text, View } from 'react-native';
+import { router } from 'expo-router';
 import { SchoolEvent } from '@/db/schema';
 import { useCoursesStore } from '@/features/courses/store';
 import { BrutCard } from '@/ui/BrutCard';
@@ -29,7 +30,7 @@ export function TicketCard({ event, nowMs }: { event: SchoolEvent; nowMs: number
   };
 
   return (
-    <BrutCard>
+    <BrutCard onPress={() => router.push(`/event/${event.id}`)}>
       <View style={{
         flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6,
       }}>

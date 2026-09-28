@@ -16,3 +16,18 @@ export function formatClock(ms: number): string {
   const p = (n: number) => String(n).padStart(2, '0');
   return `${p(h)}:${p(m)}:${p(s)}`;
 }
+// 24h "HH:MM", matching the app's digital-clock aesthetic (no AM/PM chrome).
+export function formatTimeOfDay(ms: number): string {
+  const d = new Date(ms);
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+// A duration given in minutes, as "1h 20m" / "45m" / "3h".
+export function formatDurationMin(totalMin: number): string {
+  const clamped = Math.max(0, Math.round(totalMin));
+  const h = Math.floor(clamped / 60);
+  const m = clamped % 60;
+  if (h === 0) return `${m}m`;
+  if (m === 0) return `${h}h`;
+  return `${h}h ${m}m`;
+}

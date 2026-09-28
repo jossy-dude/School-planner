@@ -7,13 +7,14 @@ import { EventForm } from '@/features/events/components/EventForm';
 import { getEventById } from '@/features/events/queries';
 import { isValidDateId } from '@/features/schedule/logic';
 import { parseDateId } from '@/lib/schedule';
-import { EmptyState, SquareIconButton } from '@/ui/primitives';
+import { EmptyState } from '@/ui/primitives';
+import { BlobBackButton } from '@/ui/BlobBackButton';
 import { colors, fontFamilies } from '@/ui/tokens';
 
 function Header({ title }: { title: string }) {
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-      <SquareIconButton glyph="←" onPress={() => router.back()} size={40} />
+      <BlobBackButton onPress={() => router.back()} size={40} />
       <Text style={{ fontFamily: fontFamilies.heading, fontSize: 16, color: colors.ink }}>{title}</Text>
     </View>
   );

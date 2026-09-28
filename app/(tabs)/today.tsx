@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import Animated, { useAnimatedRef, useScrollViewOffset } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
-import { Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, Text, TextInput, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { useShallow } from 'zustand/react/shallow';
 import type { Attendance, StudyPromise } from '@/db/schema';
@@ -15,11 +16,15 @@ import { weekOccurrences } from '@/features/schedule/selectors';
 import { useScheduleStore } from '@/features/schedule/store';
 import { useSettings, useSettingsStore } from '@/features/settings/store';
 import { SubjectPicker } from '@/features/timer/components/SubjectPicker';
+import { AgendaStrip } from '@/features/today/components/AgendaStrip';
 import { HeroCard } from '@/features/today/components/HeroCard';
+import { StudyTodayCard } from '@/features/today/components/StudyTodayCard';
 import { PromiseBar } from '@/features/today/components/PromiseBar';
 import { toDateId } from '@/lib/schedule';
 import { BrutCard } from '@/ui/BrutCard';
+import { LayeredBackground } from '@/ui/LayeredBackground';
 import { EmptyState, SegmentedChips, SquareIconButton } from '@/ui/primitives';
+import { StitchConnector } from '@/ui/StitchConnector';
 import { colors, fontFamilies, radius } from '@/ui/tokens';
 
 const GAUGE_REFRESH_MS = 30_000;
@@ -301,18 +306,28 @@ function PromisesSection() {
 }
 
 export default function TodayScreen() {
+  const scrollRef = useAnimatedRef<Animated.ScrollView>();
+  const scrollY = useScrollViewOffset(scrollRef);
   return (
-    <View style={{ flex: 1, backgroundColor: colors.paper, padding: 16 }}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+    <View style={{ flex: 1, backgroundColor: colors.paper }}>
+      <LayeredBackground scrollY={scrollY} />
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, paddingBottom: 12 }}>
         <Text style={{ fontFamily: fontFamilies.heading, fontSize: 18, color: colors.ink }}>TODAY</Text>
         <SquareIconButton glyph="⚙" onPress={() => router.push('/settings')} />
       </View>
-      <ScrollView contentContainerStyle={{ paddingBottom: 32, gap: 16 }}>
+      <Animated.ScrollView ref={scrollRef} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 32 }}>
         <HeroCard />
-        <PromisesSection />
-        <DueSection />
-        <AttendanceSection />
-      </ScrollView>
+        <StitchConnector fromX={0.8} toX={0.25} />
+        <AgendaStrip />
+        <StitchConnector fromX={0.25} toX={0.75} />
+        <StudyTodayCard />
+        <View style={{ height: 16 }} />
+        <View style={{ gap: 16 }}>
+          <PromisesSection />
+          <DueSection />
+          <AttendanceSection />
+        </View>
+      </Animated.ScrollView>
     </View>
   );
 }

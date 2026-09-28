@@ -5,3 +5,8 @@ jest.mock('expo-sqlite', () => jest.requireActual('@/db/__mocks__/expo-sqlite'))
 // its package-provided mock keeps react-native-reanimated importable.
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 jest.mock('react-native-worklets', () => require('react-native-worklets/src/mock'));
+// expo-audio ships a native module that can't load under Jest; every sound is
+// fire-and-forget, so a silent stub is the right default for all suites.
+jest.mock('expo-audio', () => ({
+  createAudioPlayer: () => ({ play: () => {}, seekTo: () => Promise.resolve() }),
+}));

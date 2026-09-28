@@ -5,13 +5,14 @@ import { router, useLocalSearchParams } from 'expo-router';
 import type { Grade } from '@/db/schema';
 import { GradeForm } from '@/features/grades/components/GradeForm';
 import { getGradeById } from '@/features/grades/queries';
-import { EmptyState, SquareIconButton } from '@/ui/primitives';
+import { EmptyState } from '@/ui/primitives';
+import { BlobBackButton } from '@/ui/BlobBackButton';
 import { colors, fontFamilies } from '@/ui/tokens';
 
 function Header({ title }: { title: string }) {
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-      <SquareIconButton glyph="←" onPress={() => router.back()} size={40} />
+      <BlobBackButton onPress={() => router.back()} size={40} />
       <Text style={{ fontFamily: fontFamilies.heading, fontSize: 16, color: colors.ink }}>{title}</Text>
     </View>
   );

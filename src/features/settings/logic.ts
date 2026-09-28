@@ -7,6 +7,7 @@ export type Settings = {
   gpa_excluded: string[];
   backup_interval_days: number;
   backup_last_at: number | null;
+  sound_enabled: boolean;
 };
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -18,6 +19,7 @@ export const DEFAULT_SETTINGS: Settings = {
   gpa_excluded: [],
   backup_interval_days: 7,
   backup_last_at: null,
+  sound_enabled: true,
 };
 
 export function mergeSettings(base: Settings, patch: Record<string, unknown>): Settings {
@@ -25,7 +27,8 @@ export function mergeSettings(base: Settings, patch: Record<string, unknown>): S
   for (const [k, v] of Object.entries(patch)) {
     if (!(k in DEFAULT_SETTINGS)) continue;
     const def = (DEFAULT_SETTINGS as Record<string, unknown>)[k];
-    if (typeof def === 'number' && typeof v === 'number') (out as Record<string, unknown>)[k] = v;
+    if (typeof def === 'boolean' && typeof v === 'boolean') (out as Record<string, unknown>)[k] = v;
+    else if (typeof def === 'number' && typeof v === 'number') (out as Record<string, unknown>)[k] = v;
     else if (typeof def === 'string' && typeof v === 'string') (out as Record<string, unknown>)[k] = v;
     else if (Array.isArray(def) && Array.isArray(v)) (out as Record<string, unknown>)[k] = v;
     else if (def === null && (v === null || typeof v === 'number' || typeof v === 'string')) (out as Record<string, unknown>)[k] = v;

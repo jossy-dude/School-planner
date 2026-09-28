@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import renderer from 'react-test-renderer';
-import { GrainOverlay } from '../GrainOverlay';
+import { PaperTexture } from '../PaperTexture';
 
 jest.mock('@shopify/react-native-skia', () => ({
   Skia: {
@@ -19,19 +19,22 @@ jest.mock('@shopify/react-native-skia', () => ({
 it('survives a shader compilation failure and renders nothing', () => {
   let tree: renderer.ReactTestRenderer | undefined;
   renderer.act(() => {
-    tree = renderer.create(<GrainOverlay />);
+    tree = renderer.create(<PaperTexture />);
   });
   expect(tree!.toJSON()).toBeNull();
 });
 
 it('uses a valid SKSL runtime-effect entry point', () => {
-  const src = fs.readFileSync(path.join(__dirname, '../GrainOverlay.tsx'), 'utf8');
+  const src = fs.readFileSync(path.join(__dirname, '../PaperTexture.tsx'), 'utf8');
   expect(src).toMatch(/half4 main\(float2/);
   expect(src).not.toMatch(/fragment main/);
 });
 
-it('returns a premultiplied color so the grain cannot wash out the screen', () => {
-  const src = fs.readFileSync(path.join(__dirname, '../GrainOverlay.tsx'), 'utf8');
-  expect(src).toMatch(/half4\(n \* 0\.05, n \* 0\.05, n \* 0\.05, 0\.05\)/);
-  expect(src).not.toMatch(/half4\(n, n, n, 0\.05\)/);
+it('returns a premultiplied color so the texture cannot wash out the screen', () => {
+  const src = fs.readFileSync(path.join(__dirname, '../PaperTexture.tsx'), 'utf8');
+  // The shader's own comment states the invariant (color == unpremultiplied * alpha);
+  // this asserts the `main` body actually follows it rather than returning the
+  // raw grayscale value `g` directly.
+  expect(src).toMatch(/half4\(g \* a, g \* a, g \* a, a\)/);
+  expect(src).not.toMatch(/half4\(g, g, g, a\)/);
 });

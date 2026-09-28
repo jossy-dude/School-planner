@@ -12,12 +12,16 @@ import { CategoryChips } from '@/features/grades/components/CategoryChips';
 import { GradeListItem } from '@/features/grades/components/GradeRow';
 import { ScoreBar } from '@/features/grades/components/ScoreBar';
 import { useGrades } from '@/features/grades/store';
+import { confirmDeleteFile, openStoredFile } from '@/features/files/actions';
+import { FileList } from '@/features/files/components/FileList';
+import { useCourseFiles, useFilesStore } from '@/features/files/store';
 import { NoteList } from '@/features/notes/components/NoteList';
 import { useNotes } from '@/features/notes/store';
 import { ExceptionList } from '@/features/schedule/components/ExceptionList';
 import { PatternRow } from '@/features/schedule/components/PatternRow';
 import { useSchedule } from '@/features/schedule/store';
 import { EmptyState, SquareIconButton, Stamp } from '@/ui/primitives';
+import { BlobBackButton } from '@/ui/BlobBackButton';
 import { colors, fontFamilies, hardShadow, radius } from '@/ui/tokens';
 
 const SECTIONS = [
@@ -156,6 +160,34 @@ function GradesPanel({ courseId }: { courseId: string }) {
   );
 }
 
+function FilesPanel({ courseId }: { courseId: string }) {
+  const { files, loaded, refresh } = useCourseFiles(courseId);
+  const removeFile = useFilesStore((s) => s.remove);
+  useEffect(() => { void refresh(); }, [refresh]);
+
+  return (
+    <View style={{ gap: 8 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Text style={{ fontFamily: fontFamilies.heading, fontSize: 13, color: colors.ink70 }}>
+          ▤ FILES
+        </Text>
+        <SquareIconButton
+          glyph="+"
+          size={32}
+          label="add file"
+          onPress={() => router.push({ pathname: '/file-add', params: { courseId } })}
+        />
+      </View>
+      <FileList
+        files={files}
+        loaded={loaded}
+        onOpen={(file) => void openStoredFile(file)}
+        onDelete={(file) => confirmDeleteFile(file, () => { void removeFile(file.id).catch(() => Alert.alert('Could not delete', 'The file could not be removed.')); })}
+      />
+    </View>
+  );
+}
+
 function NotesPanel({ courseId }: { courseId: string }) {
   const { notes, loaded, refresh } = useNotes(courseId);
   useEffect(() => { void refresh(courseId); }, [refresh, courseId]);
@@ -207,7 +239,7 @@ export default function CourseScreen() {
     return (
       <View style={{ flex: 1, backgroundColor: colors.paper, padding: 16, gap: 16 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-          <SquareIconButton glyph="←" onPress={() => router.back()} size={40} />
+          <BlobBackButton onPress={() => router.back()} size={40} />
           <Text style={{ fontFamily: fontFamilies.heading, fontSize: 16, color: colors.ink }}>COURSE</Text>
         </View>
         <EmptyState glyph="▣" label={loaded ? 'course not found' : 'loading…'} />
@@ -243,7 +275,7 @@ export default function CourseScreen() {
   return (
     <ScrollView style={{ flex: 1, backgroundColor: colors.paper }} contentContainerStyle={{ padding: 16, paddingBottom: 48, gap: 16 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-        <SquareIconButton glyph="←" onPress={() => router.back()} size={40} />
+        <BlobBackButton onPress={() => router.back()} size={40} />
         <View style={{ flexDirection: 'row', gap: 8 }}>
           <SquareIconButton glyph="✎" onPress={() => setEditing(true)} size={40} />
           <SquareIconButton glyph="✕" tone="danger" onPress={confirmDelete} size={40} />
@@ -313,12 +345,7 @@ export default function CourseScreen() {
       ) : s.key === 'notes' ? (
         <NotesPanel key={s.key} courseId={id} />
       ) : (
-        <View key={s.key} style={{ gap: 4 }}>
-          <Text style={{ fontFamily: fontFamilies.heading, fontSize: 13, color: colors.ink70 }}>
-            {s.glyph} {s.title}
-          </Text>
-          <EmptyState glyph={s.glyph} label="coming soon" />
-        </View>
+        <FilesPanel key={s.key} courseId={id} />
       )))}
     </ScrollView>
   );

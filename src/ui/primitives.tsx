@@ -6,6 +6,7 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
+import { GhostScribble } from '@/ui/GhostScribble';
 import { colors, fontFamilies, hardShadow, radius } from '@/ui/tokens';
 
 export function FilterChip({ label, count, active, onPress }:
@@ -148,7 +149,10 @@ export function TMinusChip({ text, tone = 'ink' }: { text: string; tone?: 'ink' 
 export function EmptyState({ glyph, label }: { glyph: string; label: string }) {
   return (
     <View style={{ alignItems: 'center', paddingVertical: 48, gap: 8 }}>
-      <Text style={{ fontSize: 40, color: colors.ink15 }}>{glyph}</Text>
+      <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+        <GhostScribble size={64} style={{ position: 'absolute', top: -14 }} />
+        <Text style={{ fontSize: 40, color: colors.ink15 }}>{glyph}</Text>
+      </View>
       <Text style={{ fontFamily: fontFamilies.mono, fontSize: 13, color: colors.ink40 }}>
         {label}
       </Text>

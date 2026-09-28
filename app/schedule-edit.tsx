@@ -6,7 +6,8 @@ import { TimeField } from '@/features/schedule/components/TimeField';
 import { WeekdayChips } from '@/features/schedule/components/WeekdayChips';
 import { isValidTime, PatternDraft, validatePattern } from '@/features/schedule/logic';
 import { useSchedule } from '@/features/schedule/store';
-import { EmptyState, SquareIconButton } from '@/ui/primitives';
+import { EmptyState } from '@/ui/primitives';
+import { BlobBackButton } from '@/ui/BlobBackButton';
 import { colors, fontFamilies, hardShadow, radius } from '@/ui/tokens';
 
 const label = {
@@ -22,7 +23,7 @@ const fieldBox = {
 function Header({ title }: { title: string }) {
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-      <SquareIconButton glyph="←" onPress={() => router.back()} size={40} />
+      <BlobBackButton onPress={() => router.back()} size={40} />
       <Text style={{ fontFamily: fontFamilies.heading, fontSize: 16, color: colors.ink }}>{title}</Text>
     </View>
   );
