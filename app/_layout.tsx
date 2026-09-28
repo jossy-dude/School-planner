@@ -6,14 +6,16 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { migrateNow } from '@/db';
 import { refreshReminders } from '@/features/reminders/refresh';
 import { runAutoBackup } from '@/features/backup/auto';
+import { autoSeedIfEmpty } from '@/features/dev/seed';
 import { useFontsLoaded } from '@/ui/fonts';
 import { BootErrorScreen } from '@/ui/BootErrorScreen';
 import { PaperTexture } from '@/ui/PaperTexture';
 import { colors } from '@/ui/tokens';
 
-// Module-level one-shot: survives StrictMode's double-mounted effect in dev,
-// so a session can never silently export two zips.
+// Module-level one-shots: survive StrictMode's double-mounted effect in dev,
+// so a session can never double-backup or re-seed over the user's data.
 let autoBackupChecked = false;
+let autoSeedChecked = false;
 
 export default function RootLayout() {
   const fontsLoaded = useFontsLoaded();
@@ -29,6 +31,12 @@ export default function RootLayout() {
         if (!autoBackupChecked) {
           autoBackupChecked = true;
           runAutoBackup().catch(() => {});
+        }
+        // Dev only: a brand-new install opens full of demo data instead of
+        // empty states. Stops the moment any course exists.
+        if (!autoSeedChecked) {
+          autoSeedChecked = true;
+          autoSeedIfEmpty().catch(() => {});
         }
       })
       .catch(() => setMigrateFailed(true));

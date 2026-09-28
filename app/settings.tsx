@@ -1,10 +1,11 @@
 import { ReactNode, useEffect, useState } from 'react';
 import * as Haptics from 'expo-haptics';
-import { ScrollView, Text, View } from 'react-native';
+import { Alert, ScrollView, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { ScaleEditor } from '@/features/gpa/components/ScaleEditor';
 import { exportBackup } from '@/features/backup/exporter';
 import { importBackup } from '@/features/backup/importer';
+import { loadSampleData } from '@/features/dev/seed';
 import { notificationsGranted } from '@/features/reminders/notify';
 import { toDateId } from '@/lib/schedule';
 import { BrutCard } from '@/ui/BrutCard';
@@ -129,6 +130,21 @@ export default function SettingsScreen() {
             </Text>
           </Row>
         </Section>
+        {__DEV__ && (
+          <Section title="SAMPLE DATA">
+            <Row label="LOAD DEMO SEMESTER">
+              <SquareIconButton glyph="✦" size={30} label="load sample data"
+                onPress={() => Alert.alert(
+                  'Replace everything?',
+                  'Your current courses, grades, notes, and settings will be replaced by a full demo semester. This cannot be undone.',
+                  [
+                    { text: 'CANCEL', onPress: () => {} },
+                    { text: 'REPLACE', style: 'destructive', onPress: () => void loadSampleData() },
+                  ],
+                )} />
+            </Row>
+          </Section>
+        )}
         <Section title="GPA">
           <ScaleEditor />
         </Section>
