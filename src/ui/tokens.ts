@@ -1,6 +1,10 @@
 export const colors = {
   paper: '#F4F1EA',
   paper2: '#EBE6DA',
+  // Layered-paper gradient stops (lighter top sheet, deeper cream under it).
+  paperTop: '#FAF7F0',
+  paperMid: '#F4F1EA',
+  paperDeep: '#E7E1D2',
   ink: '#141414',
   ink70: '#4A4A4A',
   ink40: '#8C8C8C',
