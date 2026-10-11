@@ -9,6 +9,7 @@ import { useSchedule } from '@/features/schedule/store';
 import { EmptyState } from '@/ui/primitives';
 import { BlobBackButton } from '@/ui/BlobBackButton';
 import { colors, fontFamilies, hardShadow, radius } from '@/ui/tokens';
+import { ScreenBackground } from '@/ui/ScreenBackground';
 
 const label = {
   fontFamily: fontFamilies.mono, fontSize: 11, color: colors.ink40, letterSpacing: 1,
@@ -81,106 +82,109 @@ function PatternForm({ courseId, pattern, savePattern, removePattern }: {
   };
 
   return (
-    <ScrollView
-      style={{ flex: 1, backgroundColor: colors.paper }}
-      contentContainerStyle={{ padding: 16, paddingBottom: 48, gap: 16 }}
-      keyboardShouldPersistTaps="handled"
-    >
-      <Header title={editing ? 'EDIT CLASS' : 'NEW CLASS'} />
-
-      <View style={{ gap: 6 }}>
-        <Text style={label}>WEEKDAY</Text>
-        <WeekdayChips value={weekday} onChange={setWeekday} />
-      </View>
-
-      <View style={{ flexDirection: 'row', gap: 16 }}>
-        <View style={{ gap: 6, flex: 1 }}>
-          <Text style={label}>START</Text>
-          <TimeField value={start} onChange={setStart} />
-        </View>
-        <View style={{ gap: 6, flex: 1 }}>
-          <Text style={label}>END</Text>
-          <TimeField value={end} onChange={setEnd} />
-        </View>
-      </View>
-
-      {crossesMidnight && (
-        <Text style={{ fontFamily: fontFamilies.mono, fontSize: 12, color: colors.ink40 }}>
-          ends next day
-        </Text>
-      )}
-
-      <View style={{ gap: 6 }}>
-        <Text style={label}>LOCATION</Text>
-        <TextInput
-          value={location}
-          onChangeText={setLocation}
-          placeholder="e.g. Room B2"
-          placeholderTextColor={colors.ink40}
-          style={fieldBox}
-          autoCapitalize="words"
-        />
-      </View>
-
-      <View style={{ flexDirection: 'row', gap: 12 }}>
-        <View style={{ gap: 6, flex: 1 }}>
-          <Text style={label}>VALID FROM (OPTIONAL)</Text>
-          <TextInput
-            value={validFrom}
-            onChangeText={setValidFrom}
-            placeholder="YYYY-MM-DD"
-            placeholderTextColor={colors.ink40}
-            style={[fieldBox, { fontFamily: fontFamilies.mono }]}
-            autoCapitalize="none"
-          />
-        </View>
-        <View style={{ gap: 6, flex: 1 }}>
-          <Text style={label}>VALID TO (OPTIONAL)</Text>
-          <TextInput
-            value={validTo}
-            onChangeText={setValidTo}
-            placeholder="YYYY-MM-DD"
-            placeholderTextColor={colors.ink40}
-            style={[fieldBox, { fontFamily: fontFamilies.mono }]}
-            autoCapitalize="none"
-          />
-        </View>
-      </View>
-
-      {error !== null && (
-        <Text style={{ fontFamily: fontFamilies.mono, fontSize: 13, color: colors.danger }} accessibilityRole="alert">
-          {error}
-        </Text>
-      )}
-
-      <Pressable
-        onPress={submit}
-        disabled={busy}
-        accessibilityRole="button"
-        style={{
-          backgroundColor: colors.ink, borderWidth: 2, borderColor: colors.ink,
-          paddingVertical: 14, alignItems: 'center', borderRadius: radius.md,
-          opacity: busy ? 0.6 : 1, ...hardShadow,
-        }}
+    <View style={{ flex: 1 }}>
+      <ScreenBackground />
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ padding: 16, paddingBottom: 48, gap: 16 }}
+        keyboardShouldPersistTaps="handled"
       >
-        <Text style={{ fontFamily: fontFamilies.heading, fontSize: 14, color: colors.paper }}>
-          {busy ? 'SAVING…' : 'SAVE'}
-        </Text>
-      </Pressable>
+        <Header title={editing ? 'EDIT CLASS' : 'NEW CLASS'} />
 
-      {editing && (
+        <View style={{ gap: 6 }}>
+          <Text style={label}>WEEKDAY</Text>
+          <WeekdayChips value={weekday} onChange={setWeekday} />
+        </View>
+
+        <View style={{ flexDirection: 'row', gap: 16 }}>
+          <View style={{ gap: 6, flex: 1 }}>
+            <Text style={label}>START</Text>
+            <TimeField value={start} onChange={setStart} />
+          </View>
+          <View style={{ gap: 6, flex: 1 }}>
+            <Text style={label}>END</Text>
+            <TimeField value={end} onChange={setEnd} />
+          </View>
+        </View>
+
+        {crossesMidnight && (
+          <Text style={{ fontFamily: fontFamilies.mono, fontSize: 12, color: colors.ink40 }}>
+            ends next day
+          </Text>
+        )}
+
+        <View style={{ gap: 6 }}>
+          <Text style={label}>LOCATION</Text>
+          <TextInput
+            value={location}
+            onChangeText={setLocation}
+            placeholder="e.g. Room B2"
+            placeholderTextColor={colors.ink40}
+            style={fieldBox}
+            autoCapitalize="words"
+          />
+        </View>
+
+        <View style={{ flexDirection: 'row', gap: 12 }}>
+          <View style={{ gap: 6, flex: 1 }}>
+            <Text style={label}>VALID FROM (OPTIONAL)</Text>
+            <TextInput
+              value={validFrom}
+              onChangeText={setValidFrom}
+              placeholder="YYYY-MM-DD"
+              placeholderTextColor={colors.ink40}
+              style={[fieldBox, { fontFamily: fontFamilies.mono }]}
+              autoCapitalize="none"
+            />
+          </View>
+          <View style={{ gap: 6, flex: 1 }}>
+            <Text style={label}>VALID TO (OPTIONAL)</Text>
+            <TextInput
+              value={validTo}
+              onChangeText={setValidTo}
+              placeholder="YYYY-MM-DD"
+              placeholderTextColor={colors.ink40}
+              style={[fieldBox, { fontFamily: fontFamilies.mono }]}
+              autoCapitalize="none"
+            />
+          </View>
+        </View>
+
+        {error !== null && (
+          <Text style={{ fontFamily: fontFamilies.mono, fontSize: 13, color: colors.danger }} accessibilityRole="alert">
+            {error}
+          </Text>
+        )}
+
         <Pressable
-          onPress={confirmDelete}
+          onPress={submit}
+          disabled={busy}
           accessibilityRole="button"
           style={{
-            borderWidth: 2, borderColor: colors.danger, backgroundColor: colors.paper,
+            backgroundColor: colors.ink, borderWidth: 2, borderColor: colors.ink,
             paddingVertical: 14, alignItems: 'center', borderRadius: radius.md,
+            opacity: busy ? 0.6 : 1, ...hardShadow,
           }}
         >
-          <Text style={{ fontFamily: fontFamilies.heading, fontSize: 14, color: colors.danger }}>DELETE</Text>
+          <Text style={{ fontFamily: fontFamilies.heading, fontSize: 14, color: colors.paper }}>
+            {busy ? 'SAVING…' : 'SAVE'}
+          </Text>
         </Pressable>
-      )}
-    </ScrollView>
+
+        {editing && (
+          <Pressable
+            onPress={confirmDelete}
+            accessibilityRole="button"
+            style={{
+              borderWidth: 2, borderColor: colors.danger, backgroundColor: colors.paper,
+              paddingVertical: 14, alignItems: 'center', borderRadius: radius.md,
+            }}
+          >
+            <Text style={{ fontFamily: fontFamilies.heading, fontSize: 14, color: colors.danger }}>DELETE</Text>
+          </Pressable>
+        )}
+      </ScrollView>
+    </View>
   );
 }
 

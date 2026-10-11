@@ -8,6 +8,7 @@ import { getGradeById } from '@/features/grades/queries';
 import { EmptyState } from '@/ui/primitives';
 import { BlobBackButton } from '@/ui/BlobBackButton';
 import { colors, fontFamilies } from '@/ui/tokens';
+import { ScreenBackground } from '@/ui/ScreenBackground';
 
 function Header({ title }: { title: string }) {
   return (
@@ -49,6 +50,7 @@ export default function GradeModal() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.paper, padding: 16, gap: 16 }}>
+      <ScreenBackground />
       <Header title={!id || !courseId ? 'GRADE' : isNew ? 'NEW GRADE' : 'EDIT GRADE'} />
       {content}
     </View>

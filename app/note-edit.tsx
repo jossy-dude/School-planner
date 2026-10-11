@@ -9,6 +9,7 @@ import { useNotes } from '@/features/notes/store';
 import { EmptyState, SegmentedChips } from '@/ui/primitives';
 import { BlobBackButton } from '@/ui/BlobBackButton';
 import { colors, fontFamilies, hardShadow, radius } from '@/ui/tokens';
+import { ScreenBackground } from '@/ui/ScreenBackground';
 
 function Header({ title }: { title: string }) {
   return (
@@ -198,6 +199,7 @@ export default function NoteModal() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.paper, padding: 16, gap: 16 }}>
+      <ScreenBackground />
       <Header title={!id || !courseId ? 'NOTE' : isNew ? 'NEW NOTE' : 'EDIT NOTE'} />
       {content}
     </View>

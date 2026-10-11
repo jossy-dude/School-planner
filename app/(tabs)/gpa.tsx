@@ -8,6 +8,7 @@ import { useGpaResult, useGpaStore } from '@/features/gpa/store';
 import { useSettingsStore } from '@/features/settings/store';
 import { EmptyState } from '@/ui/primitives';
 import { colors, fontFamilies } from '@/ui/tokens';
+import { ScreenBackground } from '@/ui/ScreenBackground';
 
 export default function GpaScreen() {
   const refreshGpa = useGpaStore((s) => s.refresh);
@@ -58,6 +59,7 @@ export default function GpaScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.paper, padding: 16 }}>
+      <ScreenBackground />
       {header}
       <GpaResultCard
         gpa={result.gpa}

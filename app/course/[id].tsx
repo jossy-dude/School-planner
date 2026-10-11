@@ -23,6 +23,7 @@ import { useSchedule } from '@/features/schedule/store';
 import { EmptyState, SquareIconButton, Stamp } from '@/ui/primitives';
 import { BlobBackButton } from '@/ui/BlobBackButton';
 import { colors, fontFamilies, hardShadow, radius } from '@/ui/tokens';
+import { ScreenBackground } from '@/ui/ScreenBackground';
 
 const SECTIONS = [
   { key: 'schedule', glyph: '◷', title: 'SCHEDULE' },
@@ -273,80 +274,86 @@ export default function CourseScreen() {
   };
 
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: colors.paper }} contentContainerStyle={{ padding: 16, paddingBottom: 48, gap: 16 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-        <BlobBackButton onPress={() => router.back()} size={40} />
-        <View style={{ flexDirection: 'row', gap: 8 }}>
-          <SquareIconButton glyph="✎" onPress={() => setEditing(true)} size={40} />
-          <SquareIconButton glyph="✕" tone="danger" onPress={confirmDelete} size={40} />
-        </View>
-      </View>
-
-      <View style={{ borderWidth: 2, borderColor: colors.ink, borderRadius: radius.md, backgroundColor: colors.paper2, overflow: 'hidden', ...hardShadow }}>
-        <PatternTile color={course.color} pattern={course.pattern} height={88} />
-        <View style={{ padding: 12, gap: 8 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-            <Text style={{ fontSize: 30 }}>{course.emoji}</Text>
-            <Text style={{ flex: 1, fontFamily: fontFamilies.heading, fontSize: 18, color: colors.ink }}>
-              {courseFolderLabel(course)}
-            </Text>
-          </View>
+    <View style={{ flex: 1 }}>
+      <ScreenBackground />
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ padding: 16, paddingBottom: 48, gap: 16 }}
+      >
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <BlobBackButton onPress={() => router.back()} size={40} />
           <View style={{ flexDirection: 'row', gap: 8 }}>
-            <Text style={{ fontFamily: fontFamilies.mono, fontSize: 12, color: colors.ink70 }}>
-              CODE {course.code || '—'}
-            </Text>
-            <Text style={{ fontFamily: fontFamilies.lcd, fontSize: 13, color: colors.ink70 }}>
-              {course.credits}CR
-            </Text>
-            <Text style={{ fontFamily: fontFamilies.lcd, fontSize: 13, color: colors.ink70 }}>
-              {course.defaultDurationMin}MIN
-            </Text>
+            <SquareIconButton glyph="✎" onPress={() => setEditing(true)} size={40} />
+            <SquareIconButton glyph="✕" tone="danger" onPress={confirmDelete} size={40} />
           </View>
         </View>
-      </View>
 
-      {SECTIONS.map((s) => (s.key === 'schedule' ? (
-        <View key={s.key} style={{ gap: 8 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        <View style={{ borderWidth: 2, borderColor: colors.ink, borderRadius: radius.md, backgroundColor: colors.paper2, overflow: 'hidden', ...hardShadow }}>
+          <PatternTile color={course.color} pattern={course.pattern} height={88} />
+          <View style={{ padding: 12, gap: 8 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <Text style={{ fontSize: 30 }}>{course.emoji}</Text>
+              <Text style={{ flex: 1, fontFamily: fontFamilies.heading, fontSize: 18, color: colors.ink }}>
+                {courseFolderLabel(course)}
+              </Text>
+            </View>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <Text style={{ fontFamily: fontFamilies.mono, fontSize: 12, color: colors.ink70 }}>
+                CODE {course.code || '—'}
+              </Text>
+              <Text style={{ fontFamily: fontFamilies.lcd, fontSize: 13, color: colors.ink70 }}>
+                {course.credits}CR
+              </Text>
+              <Text style={{ fontFamily: fontFamilies.lcd, fontSize: 13, color: colors.ink70 }}>
+                {course.defaultDurationMin}MIN
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        {SECTIONS.map((s) => (s.key === 'schedule' ? (
+          <View key={s.key} style={{ gap: 8 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Text style={{ fontFamily: fontFamilies.heading, fontSize: 13, color: colors.ink70 }}>
+                {s.glyph} {s.title}
+              </Text>
+              <SquareIconButton
+                glyph="+"
+                size={32}
+                onPress={() => router.push({ pathname: '/schedule-edit', params: { courseId: id } })}
+              />
+            </View>
+            {patterns.length === 0 && exceptions.length === 0 ? (
+              <EmptyState glyph={s.glyph} label="nothing here yet" />
+            ) : (
+              <View style={{ gap: 8 }}>
+                {patterns.map((p) => (
+                  <PatternRow
+                    key={p.id}
+                    pattern={p}
+                    onPress={() => router.push({ pathname: '/schedule-edit', params: { courseId: id, patternId: p.id } })}
+                    onDelete={() => confirmDeletePattern(p)}
+                  />
+                ))}
+                <ExceptionList courseId={id} />
+              </View>
+            )}
+          </View>
+        ) : s.key === 'grades' ? (
+          <GradesPanel key={s.key} courseId={id} />
+        ) : s.key === 'attendance' ? (
+          <View key={s.key} style={{ gap: 8 }}>
             <Text style={{ fontFamily: fontFamilies.heading, fontSize: 13, color: colors.ink70 }}>
               {s.glyph} {s.title}
             </Text>
-            <SquareIconButton
-              glyph="+"
-              size={32}
-              onPress={() => router.push({ pathname: '/schedule-edit', params: { courseId: id } })}
-            />
+            <AttendancePanel rows={attendanceRows} />
           </View>
-          {patterns.length === 0 && exceptions.length === 0 ? (
-            <EmptyState glyph={s.glyph} label="nothing here yet" />
-          ) : (
-            <View style={{ gap: 8 }}>
-              {patterns.map((p) => (
-                <PatternRow
-                  key={p.id}
-                  pattern={p}
-                  onPress={() => router.push({ pathname: '/schedule-edit', params: { courseId: id, patternId: p.id } })}
-                  onDelete={() => confirmDeletePattern(p)}
-                />
-              ))}
-              <ExceptionList courseId={id} />
-            </View>
-          )}
-        </View>
-      ) : s.key === 'grades' ? (
-        <GradesPanel key={s.key} courseId={id} />
-      ) : s.key === 'attendance' ? (
-        <View key={s.key} style={{ gap: 8 }}>
-          <Text style={{ fontFamily: fontFamilies.heading, fontSize: 13, color: colors.ink70 }}>
-            {s.glyph} {s.title}
-          </Text>
-          <AttendancePanel rows={attendanceRows} />
-        </View>
-      ) : s.key === 'notes' ? (
-        <NotesPanel key={s.key} courseId={id} />
-      ) : (
-        <FilesPanel key={s.key} courseId={id} />
-      )))}
-    </ScrollView>
+        ) : s.key === 'notes' ? (
+          <NotesPanel key={s.key} courseId={id} />
+        ) : (
+          <FilesPanel key={s.key} courseId={id} />
+        )))}
+      </ScrollView>
+    </View>
   );
 }

@@ -9,6 +9,7 @@ import { SubjectPicker } from '@/features/timer/components/SubjectPicker';
 import { EmptyState, FilterChip } from '@/ui/primitives';
 import { BlobBackButton } from '@/ui/BlobBackButton';
 import { colors, fontFamilies, hardShadow, radius } from '@/ui/tokens';
+import { ScreenBackground } from '@/ui/ScreenBackground';
 
 function Header({ title }: { title: string }) {
   return (
@@ -112,6 +113,7 @@ export default function FileAddModal() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.paper, padding: 16, gap: 16 }}>
+      <ScreenBackground />
       <Header title="ADD FILE" />
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ gap: 16, paddingBottom: 48 }} keyboardShouldPersistTaps="handled">
         <View style={{ gap: 6 }}>

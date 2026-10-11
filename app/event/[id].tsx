@@ -10,6 +10,7 @@ import { parseDateId } from '@/lib/schedule';
 import { EmptyState } from '@/ui/primitives';
 import { BlobBackButton } from '@/ui/BlobBackButton';
 import { colors, fontFamilies } from '@/ui/tokens';
+import { ScreenBackground } from '@/ui/ScreenBackground';
 
 function Header({ title }: { title: string }) {
   return (
@@ -65,6 +66,7 @@ export default function EventModal() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.paper, padding: 16, gap: 16 }}>
+      <ScreenBackground />
       <Header title={!id ? 'EVENT' : isNew ? 'NEW EVENT' : 'EDIT EVENT'} />
       {content}
     </View>

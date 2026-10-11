@@ -6,6 +6,7 @@ import { PatternTile } from '@/features/courses/components/PatternTile';
 import { courseFolderLabel } from '@/features/courses/logic';
 import { EmptyState, SquareIconButton } from '@/ui/primitives';
 import { colors, fontFamilies, hardShadow, radius } from '@/ui/tokens';
+import { ScreenBackground } from '@/ui/ScreenBackground';
 
 export default function CoursesScreen() {
   const { courses, refresh } = useCoursesStore();
@@ -29,6 +30,7 @@ export default function CoursesScreen() {
   ), []);
   return (
     <View style={{ flex: 1, backgroundColor: colors.paper, padding: 16 }}>
+      <ScreenBackground />
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
         <Text style={{ fontFamily: fontFamilies.heading, fontSize: 18, color: colors.ink }}>COURSES</Text>
         <SquareIconButton glyph="+" onPress={() => router.push({ pathname: '/course/[id]', params: { id: 'new' } })} />

@@ -13,6 +13,7 @@ import { BlobBackButton } from '@/ui/BlobBackButton';
 import { FilterChip, SegmentedChips, SquareIconButton } from '@/ui/primitives';
 import { colors, fontFamilies } from '@/ui/tokens';
 import { useSettings, useSettingsStore } from '@/features/settings/store';
+import { ScreenBackground } from '@/ui/ScreenBackground';
 
 const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
 
@@ -66,6 +67,7 @@ export default function SettingsScreen() {
   }, []);
   return (
     <View style={{ flex: 1, backgroundColor: colors.paper, padding: 16 }}>
+      <ScreenBackground />
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 }}>
         <BlobBackButton onPress={() => router.back()} />
         <Text style={{ fontFamily: fontFamilies.heading, fontSize: 18, color: colors.ink }}>SETTINGS</Text>

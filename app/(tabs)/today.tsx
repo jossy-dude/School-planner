@@ -26,6 +26,7 @@ import { LayeredBackground } from '@/ui/LayeredBackground';
 import { EmptyState, SegmentedChips, SquareIconButton } from '@/ui/primitives';
 import { StitchConnector } from '@/ui/StitchConnector';
 import { colors, fontFamilies, radius } from '@/ui/tokens';
+import { ScreenBackground } from '@/ui/ScreenBackground';
 
 const GAUGE_REFRESH_MS = 30_000;
 
@@ -310,6 +311,7 @@ export default function TodayScreen() {
   const scrollY = useScrollViewOffset(scrollRef);
   return (
     <View style={{ flex: 1, backgroundColor: colors.paper }}>
+      <ScreenBackground />
       <LayeredBackground scrollY={scrollY} />
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, paddingBottom: 12 }}>
         <Text style={{ fontFamily: fontFamilies.heading, fontSize: 18, color: colors.ink }}>TODAY</Text>

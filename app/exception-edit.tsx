@@ -7,6 +7,7 @@ import { useSchedule } from '@/features/schedule/store';
 import { EmptyState, FilterChip, SegmentedChips } from '@/ui/primitives';
 import { BlobBackButton } from '@/ui/BlobBackButton';
 import { colors, fontFamilies, hardShadow, radius } from '@/ui/tokens';
+import { ScreenBackground } from '@/ui/ScreenBackground';
 
 const label = {
   fontFamily: fontFamilies.mono, fontSize: 11, color: colors.ink40, letterSpacing: 1,
@@ -195,6 +196,7 @@ export default function ExceptionEditScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.paper, padding: 16, gap: 16 }}>
+      <ScreenBackground />
       <Header title="NEW EXCEPTION" />
       <ExceptionForm courseId={courseId} />
     </View>

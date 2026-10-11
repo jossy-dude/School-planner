@@ -11,6 +11,7 @@ import { useTimerStore } from '@/features/timer/store';
 import { BrutCard } from '@/ui/BrutCard';
 import { SquareIconButton } from '@/ui/primitives';
 import { colors, fontFamilies, radius } from '@/ui/tokens';
+import { ScreenBackground } from '@/ui/ScreenBackground';
 
 const DURATIONS = [25, 45, 60, 90];
 
@@ -95,6 +96,7 @@ export default function TimerScreen() {
   return (
     <>
       <View style={{ flex: 1, backgroundColor: colors.paper, padding: 16 }}>
+        <ScreenBackground />
         <Text style={{ fontFamily: fontFamilies.heading, fontSize: 18, color: colors.ink, marginBottom: 12 }}>
           TIMER
         </Text>

@@ -15,6 +15,7 @@ import { useSettings } from '@/features/settings/store';
 import { occurrencesOnDay } from '@/lib/schedule';
 import { FilterChip, SquareIconButton } from '@/ui/primitives';
 import { colors, fontFamilies } from '@/ui/tokens';
+import { ScreenBackground } from '@/ui/ScreenBackground';
 
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
@@ -153,6 +154,7 @@ export default function CalendarScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.paper, padding: 16 }}>
+      <ScreenBackground />
       <View style={{
         flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8,
       }}>

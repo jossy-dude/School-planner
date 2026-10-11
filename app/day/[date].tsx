@@ -27,6 +27,7 @@ import { playSound } from '@/lib/sound';
 import { BlobBackButton } from '@/ui/BlobBackButton';
 import { EmptyState, SquareIconButton, Stamp, TMinusChip } from '@/ui/primitives';
 import { colors, fontFamilies, hardShadow, radius } from '@/ui/tokens';
+import { ScreenBackground } from '@/ui/ScreenBackground';
 
 interface Frame { x: number; y: number; w: number; h: number }
 const DAY_MS = 86_400_000;
@@ -238,6 +239,7 @@ export default function DayScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.paper, padding: 16, gap: 14 }}>
+      <ScreenBackground />
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
         <BlobBackButton onPress={() => router.back()} size={40} />
         <View style={{ flex: 1 }}>

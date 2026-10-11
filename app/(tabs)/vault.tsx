@@ -10,6 +10,7 @@ import { CardStack, StackCardItem } from '@/ui/CardStack';
 import { EmptyState, SquareIconButton } from '@/ui/primitives';
 import { colors, fontFamilies } from '@/ui/tokens';
 import { FileCardFace } from '@/features/vault/components/CardFaces';
+import { ScreenBackground } from '@/ui/ScreenBackground';
 
 const MISC_STACK_WIDTH = 230;
 const MISC_STACK_HEIGHT = 148;
@@ -83,6 +84,7 @@ export default function VaultScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.paper }}>
+      <ScreenBackground />
       <View style={{
         flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
         paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8,
